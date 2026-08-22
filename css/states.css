@@ -1,0 +1,15 @@
+.state-block__icon { width: 40px; height: 40px; border-radius: 50%; border: 2px solid currentColor; opacity: 0.4; }
+.state-block--empty .state-block__icon { color: var(--color-ink); }
+.state-block--error .state-block__icon { color: var(--color-error); }
+.state-block__hint { color: rgba(16,36,26,0.6); }
+.btn { display: inline-flex; align-items: center; justify-content: center; padding: var(--sp-2xs) var(--sp-md); border-radius: var(--radius-sm); font-weight: 600; font-size: var(--fs-sm); transition: background var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard); }
+.btn--primary { background: var(--color-ridge-green); color: var(--color-summit-white); }
+.btn--primary:hover { background: var(--color-ridge-green-light); }
+.btn--secondary { background: transparent; color: var(--color-ridge-green); border: 1px solid var(--color-ridge-green); }
+.btn--secondary:hover { background: var(--color-ridge-green); color: var(--color-summit-white); }
+.lazy-img-wrap { position: relative; overflow: hidden; background: var(--color-line); width: 100%; height: 100%; }
+.lazy-img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity var(--dur-base) var(--ease-out); }
+.lazy-img--loading { opacity: 0; }
+.lazy-img--loaded { opacity: 1; }
+.lazy-img--fallback { opacity: 0.6; object-fit: contain; padding: var(--sp-lg); background: var(--color-line); }
+@media (prefers-reduced-motion: reduce) { .lazy-img { transition: none; } }

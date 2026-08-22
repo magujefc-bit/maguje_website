@@ -1,0 +1,146 @@
+/* =====================================================================
+   Dashboard styles — scoped entirely under #dashboard-shell so nothing
+   here can leak onto the public site's own markup (this stylesheet is
+   loaded globally, on every route, since both apps share one index.html).
+   The only exceptions are the body.dashboard-mode / body.auth-mode rules
+   below, which control page-level layout and are toggled by JS
+   (js/main.js's route:after listener, and the dashboard's own auth
+   views) — never present unless a dashboard route is actually active.
+   ===================================================================== */
+
+/* ===== Body-level layout (toggled via body.dashboard-mode) ===== */
+body.dashboard-mode {
+  font-family: system-ui, sans-serif;
+  background: #f4f5f7;
+  margin: 0;
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ===== Auth pages (no sidebar) ===== */
+body.auth-mode { align-items: center; justify-content: center; }
+body.auth-mode #main { flex: 0; max-width: none; padding: 0; }
+
+/* ===== Sidebar ===== */
+#dashboard-shell { box-sizing: border-box; }
+#dashboard-shell * { box-sizing: border-box; }
+#dashboard-shell #app-sidebar-root { display: contents; }
+
+#dashboard-shell #sidebar {
+  width: 240px;
+  background: #046926;
+  color: #fff;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+#dashboard-shell .sidebar-header { padding: 1.3rem 1.2rem; border-bottom: 1px solid #ffffff1a; display: flex; align-items: center; gap: 0.7rem; }
+#dashboard-shell .club-crest { width: 40px; height: 40px; object-fit: contain; border-radius: 6px; background: #ffffff14; flex-shrink: 0; }
+#dashboard-shell .sidebar-header-text h2 { margin: 0; font-size: 1.05rem; }
+#dashboard-shell .role-badge { font-size: 0.7rem; background: #ffffff22; padding: 0.2rem 0.55rem; border-radius: 12px; display: inline-block; margin-top: 0.3rem; }
+
+#dashboard-shell nav#nav { flex: 1; padding: 1rem 0.6rem; overflow-y: auto; }
+#dashboard-shell .nav-section { margin-bottom: 1.4rem; }
+#dashboard-shell .nav-section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #ffffff66; padding: 0 0.6rem; margin-bottom: 0.4rem; }
+#dashboard-shell .nav-link { display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0.6rem; border-radius: 6px; color: #e0e0e8; text-decoration: none; font-size: 0.88rem; margin-bottom: 2px; }
+#dashboard-shell .nav-link:hover { background: #ffffff14; }
+#dashboard-shell .nav-link.active { background: #ffffff22; color: #fff; font-weight: 600; }
+#dashboard-shell .nav-link .icon { width: 1.1rem; text-align: center; }
+
+#dashboard-shell .sidebar-footer { padding: 0.9rem; border-top: 1px solid #ffffff1a; }
+#dashboard-shell #logoutBtn { width: 100%; background: transparent; border: 1px solid #ffffff40; color: #fff; padding: 0.5rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+#dashboard-shell #logoutBtn:hover { background: #ffffff14; }
+
+#dashboard-shell #menuToggle { display: none; background: #099220; color: #fff; border: none; padding: 0.6rem 1rem; font-size: 1rem; width: 100%; text-align: left; }
+
+/* ===== Main content ===== */
+#dashboard-shell #main { flex: 1; padding: 2rem; max-width: 1100px; }
+#dashboard-shell #main h1 { margin: 0 0 0.3rem; font-size: 1.4rem; color: #109b45; }
+#dashboard-shell #main p.sub { color: #666; margin: 0 0 1.2rem; font-size: 0.9rem; }
+#dashboard-shell .back-link { font-size: 0.85rem; color: #109b45; text-decoration: none; font-weight: 600; }
+
+/* ===== Cards ===== */
+#dashboard-shell .card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 1.4rem; margin-bottom: 1.2rem; }
+#dashboard-shell .card h2 { margin: 0 0 1rem; font-size: 1.05rem; color: #333; }
+#dashboard-shell .card h3 { margin: 1.1rem 0 0.6rem; font-size: 0.9rem; color: #109b45; }
+
+/* ===== Forms ===== */
+#dashboard-shell .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+#dashboard-shell .field-grid.full { grid-template-columns: 1fr; }
+#dashboard-shell .field-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+#dashboard-shell label { display: block; font-size: 0.8rem; color: #555; margin-bottom: 0.3rem; font-weight: 600; }
+#dashboard-shell input[type="text"], #dashboard-shell input[type="number"], #dashboard-shell input[type="date"], #dashboard-shell input[type="time"],
+#dashboard-shell input[type="url"], #dashboard-shell input[type="file"], #dashboard-shell textarea, #dashboard-shell select {
+  width: 100%; padding: 0.55rem 0.7rem; border: 1px solid #d3ded6; border-radius: 6px;
+  font-size: 0.88rem; font-family: inherit; box-sizing: border-box;
+}
+#dashboard-shell textarea { resize: vertical; min-height: 80px; }
+#dashboard-shell .checkbox-row { display: flex; align-items: center; gap: 0.5rem; }
+#dashboard-shell .checkbox-row input { width: auto; }
+#dashboard-shell .radio-group { display: flex; gap: 1rem; margin-bottom: 1rem; }
+#dashboard-shell .radio-group label { display: flex; align-items: center; gap: 0.4rem; font-weight: 500; font-size: 0.85rem; }
+#dashboard-shell .radio-group input { width: auto; }
+
+/* ===== Buttons ===== */
+#dashboard-shell .btn-primary { background: #109b45; color: #fff; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; }
+#dashboard-shell .btn-primary:hover { background: #0d7f39; }
+#dashboard-shell .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+#dashboard-shell .btn-secondary { background: #eee; color: #333; border: none; padding: 0.5rem 0.9rem; border-radius: 6px; cursor: pointer; font-size: 0.82rem; }
+#dashboard-shell .btn-danger { background: #fde8e7; color: #b3261e; border: none; padding: 0.45rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+#dashboard-shell .btn-danger:hover { background: #f8d0ce; }
+#dashboard-shell .btn-link { background: none; border: none; color: #109b45; cursor: pointer; font-size: 0.82rem; font-weight: 600; padding: 0; }
+#dashboard-shell .btn-icon { background: #eee; border: none; border-radius: 6px; cursor: pointer; padding: 0.5rem 0.7rem; font-size: 1rem; }
+
+#dashboard-shell .save-status { font-size: 0.82rem; margin-left: 0.6rem; color: #109b45; }
+#dashboard-shell .save-status.error { color: #b3261e; }
+#dashboard-shell .empty-msg { color: #999; font-size: 0.85rem; padding: 0.6rem 0; }
+
+/* ===== Tables (generic — used by any data table across pages) ===== */
+#dashboard-shell .table-wrap { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow-x: auto; }
+#dashboard-shell .data-table { width: 100%; border-collapse: collapse; }
+#dashboard-shell .data-table th { text-align: left; background: #eaf6ee; color: #0d7f39; padding: 0.6rem 0.8rem; font-size: 0.78rem; white-space: nowrap; }
+#dashboard-shell .data-table td { padding: 0.6rem 0.8rem; border-top: 1px solid #f0f4f1; font-size: 0.85rem; }
+
+/* ===== Status pills / badges ===== */
+#dashboard-shell .badge, #dashboard-shell .status-pill { padding: 3px 9px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; }
+#dashboard-shell .badge-confirmed, #dashboard-shell .badge-active, #dashboard-shell .status-completed { background: #e3f5e8; color: #109b45; }
+#dashboard-shell .badge-pending, #dashboard-shell .status-postponed { background: #fff6df; color: #9a7b00; }
+#dashboard-shell .badge-banned, #dashboard-shell .status-cancelled { background: #fde8e7; color: #b3261e; }
+#dashboard-shell .badge-role, #dashboard-shell .status-scheduled { background: #e6eefb; color: #2255a4; }
+#dashboard-shell .muted { color: #9aa8a1; }
+
+/* ===== Tag chips (horizontal, wrapping) ===== */
+#dashboard-shell .chip-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+#dashboard-shell .chip { display: flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.7rem; border-radius: 16px; background: #f7faf8; border: 1px solid #e2ece5; font-size: 0.8rem; cursor: pointer; white-space: nowrap; }
+#dashboard-shell .chip.selected { background: #109b45; color: #fff; border-color: #109b45; }
+
+/* ===== Modals ===== */
+#dashboard-shell .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
+#dashboard-shell .modal-box { background: #fff; border-radius: 10px; padding: 1.5rem; max-width: 420px; width: 100%; max-height: 85vh; overflow-y: auto; }
+#dashboard-shell .modal-box h2, #dashboard-shell .modal-box h3 { margin: 0 0 1rem; font-size: 1rem; color: #109b45; }
+#dashboard-shell .modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-top: 1rem; }
+
+/* ===== Responsive ===== */
+@media (max-width: 800px) {
+  body.dashboard-mode { flex-direction: column; }
+  #dashboard-shell #sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; position: static; height: auto; }
+  #dashboard-shell #menuToggle { display: block; }
+  #dashboard-shell nav#nav { display: none; width: 100%; }
+  #dashboard-shell nav#nav.open { display: block; }
+  #dashboard-shell .sidebar-header { display: none; }
+  #dashboard-shell .sidebar-footer {
+    width: 100%;
+    display: none;
+  }
+
+  #dashboard-shell .sidebar-footer.open {
+    display: block;
+  }
+  #dashboard-shell #main { padding: 1.2rem; }
+  #dashboard-shell .field-grid, #dashboard-shell .field-grid.three { grid-template-columns: 1fr; }
+  #dashboard-shell .modal-box { max-width: 100%; }
+}

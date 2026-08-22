@@ -1,0 +1,31 @@
+.grid { display: grid; gap: var(--sp-md); }
+.grid--auto { grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.grid--2 { grid-template-columns: repeat(1, 1fr); }
+.grid--3 { grid-template-columns: repeat(1, 1fr); }
+.grid--4 { grid-template-columns: repeat(1, 1fr); }
+@media (min-width: 768px) and (max-width: 1199px) {
+  .grid--2 { grid-template-columns: repeat(2, 1fr); }
+  .grid--3 { grid-template-columns: repeat(2, 1fr); }
+  .grid--4 { grid-template-columns: repeat(3, 1fr); }
+  .grid { gap: var(--sp-sm); }
+}
+@media (min-width: 1200px) {
+  .grid--2 { grid-template-columns: repeat(2, 1fr); }
+  .grid--3 { grid-template-columns: repeat(3, 1fr); }
+  .grid--4 { grid-template-columns: repeat(4, 1fr); }
+}
+.flex { display: flex; } .flex-col { flex-direction: column; } .flex-wrap { flex-wrap: wrap; }
+.items-center { align-items: center; } .items-start { align-items: flex-start; }
+.justify-between { justify-content: space-between; } .justify-center { justify-content: center; }
+.gap-3xs { gap: var(--sp-3xs); } .gap-2xs { gap: var(--sp-2xs); } .gap-xs { gap: var(--sp-xs); }
+.gap-sm { gap: var(--sp-sm); } .gap-md { gap: var(--sp-md); } .gap-lg { gap: var(--sp-lg); }
+.layout-split { display: grid; grid-template-columns: 1fr; gap: var(--sp-lg); }
+@media (min-width: 1200px) { .layout-split { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; } }
+.show-mobile-only { display: block; } .show-tablet-up { display: none; } .show-desktop-up { display: none; } .hide-desktop-up { display: block; }
+@media (min-width: 768px) { .show-mobile-only { display: none; } .show-tablet-up { display: block; } }
+@media (min-width: 1200px) { .show-tablet-up.tablet-only { display: none; } .show-desktop-up { display: block; } .hide-desktop-up { display: none; } }
+.section { padding-block: var(--sp-xl); } .section--tight { padding-block: var(--sp-lg); } .section--hero { padding-block: var(--sp-2xl); }
+.card { background: var(--color-summit-white); border: 1px solid var(--color-line); border-radius: var(--radius-md); padding: var(--sp-sm); }
+@media (min-width: 1200px) { .card { padding: var(--sp-md); } }
+.aspect-square { aspect-ratio: 1/1; } .aspect-video { aspect-ratio: 16/9; } .aspect-portrait { aspect-ratio: 3/4; }
+.aspect-square img, .aspect-video img, .aspect-portrait img { width: 100%; height: 100%; object-fit: cover; }

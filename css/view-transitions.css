@@ -1,0 +1,8 @@
+#app { position: relative; min-height: 60vh; }
+.view { width: 100%; }
+.view--entering { opacity: 0; transform: translateY(8px); }
+.view--entering.view--entered { opacity: 1; transform: translateY(0); transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out); }
+.view--exiting { opacity: 0; transition: opacity var(--dur-fast) var(--ease-standard); }
+@media (prefers-reduced-motion: reduce) { .view--entering, .view--entering.view--entered, .view--exiting { opacity: 1; transform: none; transition: none; } }
+.state-block { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-sm); text-align: center; padding-block: var(--sp-xl); color: var(--color-ink); }
+.state-block--error p { color: var(--color-error); }
