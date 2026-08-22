@@ -1,0 +1,34 @@
+name: Unzip project archive
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  unzip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unzip archive
+        run: |
+          unzip -o maguje-official-app.zip -d extracted
+          # flatten the nested folder if it exists
+          if [ -d "extracted/maguje-official-app" ]; then
+            mv extracted/maguje-official-app/* .
+            mv extracted/maguje-official-app/.[!.]* . 2>/dev/null || true
+          else
+            mv extracted/* .
+          fi
+          rm -rf extracted
+          rm -f maguje-official-app.zip
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Unzip and flatten project archive" || echo "Nothing to commit"
+          git push
