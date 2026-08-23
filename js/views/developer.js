@@ -1,57 +1,35 @@
+import { supabase } from "../supabase-client.js";
 import { viewContainer } from "../view-container.js";
 import { observeLazyImages } from "../components/lazy-image.js";
 import { getDailyDeveloperImage } from "../components/footer.js";
 
-/* =========================================================
-   EDIT ME — profile content lives here
-========================================================= */
-const PROFILE = {
-  name: "Victor Onyango",
-  title: "Full-Stack Developer (Vibe Coder)",
-  tagline:
-    "Building complete, self-owned systems end-to-end — no teams, no SaaS middlemen.",
-  bio: `I design and build full-stack web platforms solo — from database schema to
-    UI polish. My work spans public-facing club platforms, admin dashboards, PWAs,
-    and content management systems, usually backed by Supabase and hand-rolled
-    vanilla JS or React front ends.`,
-  skills: [
-    "JavaScript", "React / Vite", "Supabase", "PostgreSQL",
-    "RLS Policies", "Edge Functions", "PWA Architecture", "Realtime",
-    "Web Components",
-  ],
-  projects: [
-    {
-      path: "maguje-fc",
-      description:
-        "36-view vanilla JS SPA with Realtime scores, full-text search, and a merged admin dashboard sharing one Supabase project.",
-      url: "/",
-    },
-    {
-      path: "fab-media",
-      description:
-        "PWA with a self-owned social scheduling backend built on Supabase, avoiding third-party SaaS tools.",
-      url: "",
-    },
-    {
-      path: "varsity",
-      description:
-        "Offline-first student productivity PWA for Kenyan university students, using Dexie.js and a service worker.",
-      url: "",
-    },
-  ],
-  contacts: [
-    { label: "email", value: "vickyfabris01@gmail.com", href: "mailto:vickyfabris01@gmail.com" },
-    { label: "LinkedIn", value: "github.com/yourhandle", href: "https://github.com/yourhandle" },
-  { label: "Facebook", value: "github.com/yourhandle", href: "https://github.com/yourhandle" },
-  { label: "WhatsApp", value: "github.com/yourhandle", href: "https://github.com/yourhandle" },
-  { label: "Youtube", value: "github.com/yourhandle", href: "https://github.com/yourhandle" },
-  { label: "TikTok", value: "github.com/yourhandle", href: "https://github.com/yourhandle" },
-  
-  ],
-};
-
 export async function developerView() {
-  const imageUrl = await getDailyDeveloperImage();
+  const [imageUrl, profileRes, skillsRes, projectsRes, socialRes] =
+    await Promise.all([
+      getDailyDeveloperImage(),
+      supabase
+        .from("developer_profile")
+        .select("name, title, tagline, bio")
+        .eq("id", 1)
+        .maybeSingle(),
+      supabase
+        .from("developer_skills")
+        .select("skill_name")
+        .order("display_order", { ascending: true }),
+      supabase
+        .from("developer_projects")
+        .select("path, description, url")
+        .order("display_order", { ascending: true }),
+      supabase
+        .from("developer_social_links")
+        .select("label, href")
+        .order("display_order", { ascending: true }),
+    ]);
+
+  const profile = profileRes.data || {};
+  const skills = (skillsRes.data || []).map((s) => s.skill_name);
+  const projects = projectsRes.data || [];
+  const contacts = socialRes.data || [];
 
   await viewContainer.render(`
     <style>
@@ -398,18 +376,18 @@ export async function developerView() {
         ${
           imageUrl
             ? `<div class="dev-hero-photo-wrap">
-                 <img src="${imageUrl}" alt="${PROFILE.name}" class="dev-hero-photo" loading="lazy">
+                 <img src="${imageUrl}" alt="${profile.name || ""}" class="dev-hero-photo" loading="lazy">
                </div>`
             : ""
         }
-        <h1 class="dev-hero-name">${PROFILE.name}</h1>
-        <p class="dev-hero-title">${PROFILE.title}</p>
-        <p class="dev-hero-tagline">${PROFILE.tagline}</p>
+        <h1 class="dev-hero-name">${profile.name || ""}</h1>
+        <p class="dev-hero-title">${profile.title || ""}</p>
+        <p class="dev-hero-tagline">${profile.tagline || ""}</p>
       </div>
 
       <div class="dev-section">
         <p class="dev-eyebrow">// about</p>
-        <p class="dev-bio">${PROFILE.bio}</p>
+        <p class="dev-bio">${profile.bio || ""}</p>
       </div>
 
       <div class="dev-orbit-section">
@@ -424,12 +402,12 @@ export async function developerView() {
       <div class="dev-section">
         <p class="dev-eyebrow">// projects</p>
         <div class="dev-projects">
-          ${PROFILE.projects
+          ${projects
             .map(
               (p) => `
             <div class="dev-project-card">
               <p class="dev-project-path">${p.path}</p>
-              <p class="dev-project-desc">${p.description}</p>
+              <p class="dev-project-desc">${p.description || ""}</p>
               ${p.url ? `<a href="${p.url}" class="dev-project-link">open →</a>` : ""}
             </div>
           `,
@@ -439,7 +417,7 @@ export async function developerView() {
       </div>
 
       <div class="dev-contacts">
-        ${PROFILE.contacts
+        ${contacts
           .map(
             (c) =>
               `<a href="${c.href}" class="dev-contact-link" data-external>${c.label}</a>`,
@@ -450,7 +428,7 @@ export async function developerView() {
     </div>
   `);
 
-  _mountOrbit();
+  _mountOrbit(skills);
   observeLazyImages(document.querySelector("#app"));
 
   return { cleanup: null };
@@ -461,11 +439,10 @@ export async function developerView() {
    Radius/duration read via CSS custom properties so the
    keyframes stay generic regardless of skill count.
 ========================================================= */
-function _mountOrbit() {
+function _mountOrbit(skills) {
   const orbit = document.querySelector("#dev-orbit");
-  if (!orbit) return;
+  if (!orbit || !skills.length) return;
 
-  const skills = PROFILE.skills;
   const mid = Math.ceil(skills.length / 2);
   const innerSkills = skills.slice(0, mid);
   const outerSkills = skills.slice(mid);
