@@ -16,10 +16,22 @@ injectStyle(
      HOME PAGE - GLOBAL OVERFLOW PROTECTION
      ========================================================= */
 
-  .home-page {
+  .home-page.container {
     width: 100%;
-    max-width: 100%;
     overflow-x: hidden;
+    max-width: 1280px;
+  }
+
+  @media (min-width: 1440px) {
+    .home-page.container {
+      max-width: 1600px;
+    }
+  }
+
+  @media (min-width: 1920px) {
+    .home-page.container {
+      max-width: 1800px;
+    }
   }
 
   .home-page * {
@@ -470,6 +482,7 @@ let KICKOFF_TOAST_INTERVAL = null;
 const MAX_FIXTURES = 4;
 const MAX_COMPETITIONS = 4;
 const MAX_NEWS = 4;
+const MAX_MATCH_REPORTS = 4;
 const STANDINGS_WINDOW = 3;
 const KICKOFF_TOAST_WINDOW_START = (24 + 12) * 60 * 60 * 1000; // 1 day 12 hours
 const KICKOFF_TOAST_WINDOW_END = 10 * 60 * 1000; // 10 minutes
@@ -717,7 +730,7 @@ export async function homeView() {
 
       </section>
 
-      <!-- LATEST MATCH REPORT -->
+      <!-- LATEST MATCH REPORTS -->
       <section
         class="home-section"
         data-slot="match-report-section"
@@ -725,7 +738,7 @@ export async function homeView() {
 
         <div class="home-section__header">
           <h2 class="home-section__title">
-            Latest Match Report
+            Latest Match Reports
           </h2>
 
           <a
@@ -736,8 +749,11 @@ export async function homeView() {
           </a>
         </div>
 
-        <div data-slot="match-report-slot">
-          ${skeletons.newsList(1)}
+        <div
+          class="home-news-scroll"
+          data-slot="match-report-slot"
+        >
+          ${skeletons.newsList(2)}
         </div>
 
       </section>
@@ -837,11 +853,17 @@ async function loadFeaturedMatchReport(root) {
   );
 
   try {
+    /*
+     * Same pattern as loadSecondaryNews: pull the newest
+     * MAX_MATCH_REPORTS reports and lay them out as a
+     * horizontally-scrollable rail (scrolls on mobile,
+     * sits side by side on desktop).
+     */
     const { data, error } = await supabase
       .from("match_report_posts")
       .select("id, slug, title, body, created_at")
       .order("created_at", { ascending: false })
-      .limit(1);
+      .limit(MAX_MATCH_REPORTS);
 
     if (error) throw error;
 
@@ -853,32 +875,39 @@ async function loadFeaturedMatchReport(root) {
       return;
     }
 
-    const post = data[0];
+    const cards = await Promise.all(
+      data.map(async (post) => {
+        const cover = await fetchFirstMedia(
+          "match_report",
+          post.id,
+        );
 
-    const cover = await fetchFirstMedia(
-      "match_report",
-      post.id,
+        return `
+          <div class="home-news-card">
+            ${newsCard(
+              {
+                slug: post.slug,
+                title: post.title,
+                excerpt: excerptFrom(post.body),
+                coverImageUrl: cover,
+                publishedAt: post.created_at,
+              },
+              {
+                basePath: "/match-reports",
+                badge: "Match Report",
+              },
+            )}
+          </div>
+        `;
+      }),
     );
 
-    slot.innerHTML = newsCard(
-      {
-        slug: post.slug,
-        title: post.title,
-        excerpt: excerptFrom(post.body),
-        coverImageUrl: cover,
-        publishedAt: post.created_at,
-      },
-      {
-        variant: "featured",
-        basePath: "/match-reports",
-        badge: "Match Report",
-      },
-    );
+    slot.innerHTML = cards.join("");
 
     observeLazyImages(slot);
   } catch (err) {
     console.error(
-      "[home] featured match report failed:",
+      "[home] match reports failed:",
       err,
     );
 
