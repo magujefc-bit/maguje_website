@@ -40,6 +40,7 @@ import { privacyView } from "./views/privacy.js";
 import { termsView } from "./views/terms.js";
 import { notFoundView } from "./views/not-found.js";
 import { developerView } from "./views/developer.js";   // ← ADD
+import { developerProfileView as dashDeveloperProfileView } from "./dashboard/views/developer-profile.js";
 
 // ---------------------------------------------------------------
 // Admin dashboard — merged into this same SPA/router, living under
