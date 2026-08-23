@@ -2,6 +2,7 @@ import { supabase } from '../supabase-client.js';
 import { viewContainer } from '../view-container.js';
 import { openLightbox } from '../components/lightbox.js';
 import { lazyImage, observeLazyImages } from '../components/lazy-image.js';
+import { shareBar, bindShareBar } from '../components/controls.js';
 import { injectStyle } from '../utils/inject-style.js';
 
 injectStyle('gallery-details-view', `
@@ -24,12 +25,16 @@ export async function galleryDetailsView(params) {
       return { cleanup: null };
     }
 
+    const url = window.location.origin + '/gallery/' + item.slug;
+
     await viewContainer.render(`
       <div class="container gallery-details">
         <div class="gallery-details__image-wrap" data-lightbox-trigger>${lazyImage({ src: item.url, alt: '', aspect: '' })}</div>
+        <div style="text-align:center; margin-top: var(--sp-md); display:flex; justify-content:center;">${shareBar(url, 'Photo — Maguje FC')}</div>
         <div style="text-align:center;"><a href="/gallery" class="btn btn--secondary gallery-details__back">Back to Gallery</a></div>
       </div>`);
     observeLazyImages(root);
+    bindShareBar(root);
     root.querySelector('[data-lightbox-trigger]').addEventListener('click', () => openLightbox([{ fullUrl: item.url, caption: '' }], 0));
     return { cleanup: null };
   } catch (err) {
