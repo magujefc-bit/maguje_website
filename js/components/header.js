@@ -1,20 +1,43 @@
-const NAV_ITEMS = [
-  { label: "Home", path: "/" },
-  { label: "News", path: "/news" },
-  { label: "Fixtures", path: "/fixtures" },
-  { label: "Results", path: "/results" },
-  { label: "Match Reports", path: "/match-reports" },
-  { label: "Standings", path: "/standings" },
-  { label: "Team", path: "/team" },
-  { label: "Head to Head", path: "/team/head-to-head" },
-  { label: "Competitions", path: "/competitions" },
-  { label: "Gallery", path: "/gallery" },
-  { label: "About", path: "/about" },
-  { label: "Officials", path: "/about/officials" },
-  { label: "Community", path: "/community" },
-  { label: "Events", path: "/events" },
-  { label: "Contact", path: "/contact" },
+const NAV_GROUPS = [
+  {
+    title: "Club",
+    items: [
+      { label: "Home", path: "/" },
+      { label: "About", path: "/about" },
+      { label: "Officials", path: "/about/officials" },
+      { label: "Team", path: "/team" },
+    ],
+  },
+  {
+    title: "Matches",
+    items: [
+      { label: "Fixtures", path: "/fixtures" },
+      { label: "Results", path: "/results" },
+      { label: "Standings", path: "/standings" },
+      { label: "Head to Head", path: "/team/head-to-head" },
+      { label: "Competitions", path: "/competitions" },
+    ],
+  },
+  {
+    title: "Content",
+    items: [
+      { label: "News", path: "/news" },
+      { label: "Match Reports", path: "/match-reports" },
+      { label: "Gallery", path: "/gallery" },
+      { label: "Community", path: "/community" },
+      { label: "Events", path: "/events" },
+    ],
+  },
+  {
+    title: "More",
+    items: [
+      { label: "Contact", path: "/contact" },
+      { label: "Admin Login", path: "/maguje-dashboard/login" },
+    ],
+  },
 ];
+
+const NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items);
 
 class Header {
   constructor(rootSelector = "#site-header") {
@@ -119,19 +142,24 @@ class Header {
         hidden
       >
         <nav aria-label="Mobile primary">
-          <ul class="mobile-menu__list">
-            ${NAV_ITEMS.map((item) => `
-              <li>
-                <a
-                  href="${item.path}"
-                  class="mobile-menu__link"
-                  data-path="${item.path}"
-                >
-                  ${item.label}
-                </a>
-              </li>
-            `).join("")}
-          </ul>
+          ${NAV_GROUPS.map((group) => `
+            <div class="mobile-menu__group">
+              <p class="mobile-menu__group-title">${group.title}</p>
+              <ul class="mobile-menu__list">
+                ${group.items.map((item) => `
+                  <li>
+                    <a
+                      href="${item.path}"
+                      class="mobile-menu__link"
+                      data-path="${item.path}"
+                    >
+                      ${item.label}
+                    </a>
+                  </li>
+                `).join("")}
+              </ul>
+            </div>
+          `).join("")}
         </nav>
       </div>
 
