@@ -1,0 +1,31 @@
+[[edge_functions]]
+  path = "/news/*"
+  function = "og-meta"
+
+[[edge_functions]]
+  path = "/match-reports/*"
+  function = "og-meta"
+
+[[edge_functions]]
+  path = "/community/*"
+  function = "og-meta"
+
+[[edge_functions]]
+  path = "/events/*"
+  function = "og-meta"
+
+[[edge_functions]]
+  path = "/gallery/*"
+  function = "og-meta"
+
+[[edge_functions]]
+  path = "/matches/*"
+  function = "og-meta"
+
+[[edge_functions]]
+  path = "/team/players/*"
+  function = "og-meta"
+
+[[edge_functions]]
+  path = "/competitions/*"
+  function = "og-meta"
