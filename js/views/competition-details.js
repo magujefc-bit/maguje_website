@@ -4,6 +4,7 @@ import { states } from '../components/states.js';
 import { standingsTable } from '../components/standings-table.js';
 import { fetchCompetition, competitionHeaderBlock, competitionSubNav, notFoundBlock } from './competition-shared.js';
 import { observeLazyImages } from '../components/lazy-image.js';
+import { shareBar, bindShareBar } from '../components/controls.js';
 import { injectStyle } from '../utils/inject-style.js';
 
 injectStyle('competition-details-view', `
@@ -20,9 +21,12 @@ export async function competitionDetailsView(params) {
     const comp = await fetchCompetition(slug);
     if (!comp) { await viewContainer.render(notFoundBlock('/competitions', 'Back to Competitions')); return { cleanup: null }; }
 
+    const url = window.location.origin + '/competitions/' + slug;
+
     await viewContainer.render(`
       <div class="container">
         ${competitionHeaderBlock(comp)}
+        <div style="margin-bottom: var(--sp-md);">${shareBar(url, comp.name)}</div>
         ${competitionSubNav(slug, 'overview')}
         <div class="competition-overview-section">
           <h2 class="competition-overview-section__title">Standings Preview</h2>
@@ -31,6 +35,7 @@ export async function competitionDetailsView(params) {
       </div>`);
 
     observeLazyImages(root);
+    bindShareBar(root);
     loadStandingsPreview(root, comp.id);
   } catch (err) {
     console.error('[competition-details] load failed:', err);
