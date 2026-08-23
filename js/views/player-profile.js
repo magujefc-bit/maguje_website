@@ -3,6 +3,7 @@ import { viewContainer } from "../view-container.js";
 import { skeletons } from "../components/skeletons.js";
 import { states } from "../components/states.js";
 import { lazyImage, observeLazyImages } from "../components/lazy-image.js";
+import { shareBar, bindShareBar } from "../components/controls.js";
 import { injectStyle } from "../utils/inject-style.js";
 
 injectStyle(
@@ -421,6 +422,9 @@ async function renderProfile(root, player) {
             : ""
         }
 
+        <div style="margin-block: var(--sp-md);">
+          ${shareBar(window.location.origin + "/team/players/" + player.slug, player.full_name)}
+        </div>
 
         <!-- =================================================
              STATS
@@ -451,6 +455,8 @@ async function renderProfile(root, player) {
   observeLazyImages(
     root.querySelector(".player-profile__photo"),
   );
+
+  bindShareBar(root);
 
   await loadStatsAndHistory(
     root,
