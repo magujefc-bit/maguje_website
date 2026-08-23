@@ -246,6 +246,7 @@ async function boot() {
     .add(`${DASH_BASE_PATH}/live-match`, dashLiveMatchView)
     .add(`${DASH_BASE_PATH}/content`, dashContentDashboardView)
   .add("/developer", developerView)   // ← ADD THIS
+    .add(`${DASH_BASE_PATH}/developer-profile`, dashDeveloperProfileView)
     .notFound(notFoundView);
   
 
