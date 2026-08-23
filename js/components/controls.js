@@ -27,13 +27,9 @@ injectStyle('controls', `
   .modal__close { position: absolute; top: var(--sp-sm); right: var(--sp-sm); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--fs-md); color: var(--color-ink); }
   .modal__close:hover { background: var(--color-line); }
   .share-bar { display: flex; align-items: center; gap: var(--sp-2xs); }
-  .share-btn { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: transform var(--dur-fast) var(--ease-standard), opacity var(--dur-fast) var(--ease-standard); color: var(--color-summit-white); }
-  .share-btn:hover { transform: translateY(-2px); opacity: 0.9; }
-  .share-btn svg { width: 20px; height: 20px; }
-  .share-btn--copy { background: var(--color-summit-white); border: 1px solid var(--color-line); color: var(--color-ink); }
-  .share-btn--copy:hover { border-color: var(--color-ridge-green); color: var(--color-ridge-green); }
-  .share-btn--whatsapp { background: #25D366; }
-  .share-btn--facebook { background: #1877F2; }
+  .share-btn--native { display: flex; align-items: center; gap: var(--sp-2xs); height: 40px; padding-inline: var(--sp-md); border-radius: 999px; background: var(--color-ridge-green); color: var(--color-summit-white); font-size: var(--fs-sm); font-weight: 600; transition: transform var(--dur-fast) var(--ease-standard), opacity var(--dur-fast) var(--ease-standard); }
+  .share-btn--native:hover { transform: translateY(-2px); opacity: 0.9; }
+  .share-btn--native svg { width: 18px; height: 18px; flex-shrink: 0; }
   .toast-container { position: fixed; bottom: var(--sp-md); left: 50%; transform: translateX(-50%); z-index: var(--z-toast); display: flex; flex-direction: column; gap: var(--sp-2xs); width: min(360px, 90vw); }
   .toast { background: var(--color-pitch-shadow); color: var(--color-summit-white); border-radius: var(--radius-md); padding: var(--sp-sm) var(--sp-md); font-size: var(--fs-sm); box-shadow: 0 4px 16px rgba(11,31,20,0.25); opacity: 0; transform: translateY(8px); transition: opacity var(--dur-base) var(--ease-standard), transform var(--dur-base) var(--ease-standard); }
   .toast--visible { opacity: 1; transform: translateY(0); }
@@ -112,23 +108,36 @@ export function openModal(contentHtml) {
 export function shareBar(url, title) {
   return `
     <div class="share-bar">
-      <button type="button" class="share-btn share-btn--copy" data-copy-link="${url}" aria-label="Copy link">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07l1.5-1.5"/></svg>
+      <button type="button" class="share-btn share-btn--native" data-native-share data-share-url="${url}" data-share-title="${title}" aria-label="Share">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        <span>Share</span>
       </button>
-      <a class="share-btn share-btn--whatsapp" href="https://wa.me/?text=${encodeURIComponent(title + ' ' + url)}" data-external target="_blank" rel="noopener noreferrer" aria-label="Share on WhatsApp">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.9 4.44-9.9 9.9 0 1.75.46 3.45 1.32 4.95L2 22l5.29-1.39a9.87 9.87 0 0 0 4.75 1.21h.01c5.46 0 9.9-4.44 9.9-9.9 0-2.64-1.03-5.13-2.9-7-1.87-1.87-4.36-2.9-7-2.92zm0 18.13h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.22 8.22 0 0 1-1.26-4.37c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.83 2.42a8.18 8.18 0 0 1 2.41 5.82c0 4.55-3.7 8.24-8.24 8.24zm4.52-6.16c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.13-.17.25-.64.81-.78.97-.14.17-.29.19-.54.06-.25-.12-1.04-.38-1.98-1.22-.73-.65-1.22-1.45-1.37-1.7-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.12-.15.16-.25.25-.42.08-.17.04-.31-.02-.43-.06-.13-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.23.25-.86.84-.86 2.05 0 1.2.88 2.37 1 2.53.12.17 1.74 2.65 4.21 3.72.59.25 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.08.15-1.18-.06-.1-.23-.16-.48-.28z"/></svg>
-      </a>
-      <a class="share-btn share-btn--facebook" href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}" data-external target="_blank" rel="noopener noreferrer" aria-label="Share on Facebook">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5.02 3.66 9.18 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56v1.87h2.78l-.44 2.91h-2.34V22c4.78-.76 8.44-4.92 8.44-9.94z"/></svg>
-      </a>
     </div>`;
 }
 
 export function bindShareBar(container) {
-  container.querySelectorAll('[data-copy-link]').forEach(btn => {
+  container.querySelectorAll('[data-native-share]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(btn.dataset.copyLink); showToast('Link copied'); }
-      catch { showToast('Could not copy link'); }
+      const url = btn.dataset.shareUrl;
+      const title = btn.dataset.shareTitle;
+
+      if (navigator.share) {
+        try {
+          await navigator.share({ title, url });
+        } catch (err) {
+          // AbortError just means the user closed the share sheet — not a real failure.
+          if (err.name !== 'AbortError') console.error('[share] failed:', err);
+        }
+        return;
+      }
+
+      // Desktop / unsupported browsers: fall back to copying the link.
+      try {
+        await navigator.clipboard.writeText(url);
+        showToast('Link copied — share it anywhere');
+      } catch {
+        showToast('Could not share automatically');
+      }
     });
   });
 }
