@@ -17,16 +17,24 @@ injectStyle('match-card', `
   @media (prefers-reduced-motion: reduce) { .match-card__live-dot { animation: none; } }
 `);
 
-export function matchCard(match) {
+/*
+ * options.href — optional override for the card's link target.
+ * Used by the home page's independent Upcoming fixture card,
+ * which should link to /fixtures rather than the match detail
+ * page. Defaults to the previous behaviour (/matches/:slug) when
+ * omitted, so every other existing call site is unaffected.
+ */
+export function matchCard(match, options = {}) {
   const status = match.status || 'scheduled';
   const isLive = status === 'live';
   const isFinished = status === 'completed' || status === 'finished';
   const centerContent = isLive || isFinished ? `<div class="match-card__score">${match.homeScore ?? 0} – ${match.awayScore ?? 0}</div>` : `<div class="match-card__vs">VS</div>`;
   const metaLine = isLive ? `<span class="match-card__live-badge"><span class="match-card__live-dot"></span>Live</span>` : `<span class="match-card__meta">${formatKickoff(match.kickoffAt)}</span>`;
-  const homeSlug = match.slug ? `/matches/${match.slug}` : '#';
+  const defaultHref = match.slug ? `/matches/${match.slug}` : '#';
+  const href = options.href || defaultHref;
 
   return `
-    <a href="${homeSlug}" class="match-card">
+    <a href="${href}" class="match-card">
       <div class="match-card__team">
         <div class="match-card__crest-wrap">${lazyImage({ src: match.homeTeam.crestUrl, alt: match.homeTeam.name, aspect: 'square' })}</div>
         <span class="match-card__team-name">${match.homeTeam.shortName || match.homeTeam.name}</span>
