@@ -13,6 +13,7 @@ const NAV_SECTIONS = {
         { href: dashPath('/managers'), icon: '👥', label: 'Managers' },
         { href: dashPath('/auth-records'), icon: '🔑', label: 'Auth Records' },
         { href: dashPath('/system-log'), icon: '📋', label: 'System Log' },
+        { href: dashPath('/developer-profile'), icon: '💻', label: 'Developer Page' },
       ],
     },
   ],
