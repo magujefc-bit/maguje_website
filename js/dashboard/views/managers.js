@@ -132,7 +132,7 @@ export async function managersView() {
     const email = document.getElementById('inviteEmail').value.trim();
     const role = document.getElementById('inviteRole').value;
 
-    const { error } = await supabaseClient.functions.invoke('invite-manager', {
+    const { data, error } = await supabaseClient.functions.invoke('invite-manager', {
       body: { email, role },
     });
 
@@ -140,7 +140,26 @@ export async function managersView() {
     btn.textContent = 'Send Invite';
 
     if (error) {
-      msg.textContent = "Could not send invite. The invite system isn't set up yet.";
+      let detail = error.message || 'Unknown error.';
+      try {
+        if (error.context && typeof error.context.json === 'function') {
+          const body = await error.context.json();
+          if (body?.error) detail = body.error;
+        }
+      } catch (_) {
+        // Response body wasn't JSON or already consumed — fall back to error.message.
+      }
+
+      console.error('[invite-manager] failed:', error);
+      msg.textContent = `Could not send invite: ${detail}`;
+      msg.classList.add('error');
+      return;
+    }
+
+    if (data?.error) {
+      // Some invocations resolve with a 200 but still carry an { error } payload.
+      console.error('[invite-manager] returned error payload:', data.error);
+      msg.textContent = `Could not send invite: ${data.error}`;
       msg.classList.add('error');
       return;
     }
