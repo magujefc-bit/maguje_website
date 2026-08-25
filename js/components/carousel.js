@@ -60,7 +60,7 @@ injectStyle('carousel-base', `
 
 export function initCarousel(rootEl, options = {}) {
   const {
-    intervalMs = 5000,
+    intervalMs = 8000,   // was 5000
     autoplay = true,
     pauseOffscreen = true,
     skipIndicesOnLoop = [],
