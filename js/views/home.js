@@ -51,25 +51,30 @@ injectStyle(
     color: rgba(16,36,26,0.65);
   }
 
-  /* HERO — greeting pinned, does not scroll with the carousel */
+  /* HERO — background image from latest gallery upload, with a
+     green overlay for the club-themed tint. Greeting is static
+     chrome pinned above the carousel, never scrolls with it. */
   .home-hero {
     position: relative;
-    background: var(--color-pitch-shadow);
+    background-color: var(--color-pitch-shadow);
+    background-size: cover;
+    background-position: center;
     border-radius: var(--radius-lg);
     overflow: hidden;
     min-height: 280px;
     width: 100%;
   }
 
-  .home-hero::before {
-    content: "";
+  .home-hero__overlay {
     position: absolute;
     inset: 0;
     z-index: 0;
-    background-image:
-      repeating-linear-gradient(0deg, rgba(247,249,246,0.04) 0 2px, transparent 2px 40px),
-      repeating-linear-gradient(90deg, rgba(247,249,246,0.04) 0 2px, transparent 2px 40px);
-    opacity: 0.5;
+    background: linear-gradient(
+      180deg,
+      rgba(9, 38, 20, 0.82) 0%,
+      rgba(16, 155, 69, 0.55) 60%,
+      rgba(9, 38, 20, 0.85) 100%
+    );
   }
 
   .home-hero__greeting {
@@ -87,6 +92,7 @@ injectStyle(
   .home-hero__greeting-title {
     color: var(--color-summit-white);
     margin: 0;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.35);
   }
 
   .home-hero-carousel {
@@ -109,22 +115,30 @@ injectStyle(
   .home-hero-slide__title {
     color: var(--color-summit-white);
     margin-bottom: var(--sp-2xs);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.35);
   }
 
   .home-hero-slide__text {
-    color: rgba(247,249,246,0.85);
+    color: rgba(247,249,246,0.9);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
   }
 
-  .home-hero-slide__live-badge {
+  .home-hero-slide__badge {
     display: inline-flex;
     align-items: center;
     gap: var(--sp-3xs);
     font-family: var(--font-mono);
     font-size: var(--fs-xs);
     text-transform: uppercase;
-    color: var(--color-live);
+    color: var(--color-summit-white);
+    background: rgba(0,0,0,0.25);
+    padding: 2px var(--sp-2xs);
+    border-radius: 999px;
     margin-bottom: var(--sp-xs);
+    width: fit-content;
   }
+
+  .home-hero-slide__badge--live { color: var(--color-live); }
 
   .home-kickoff-toast {
     display: flex;
@@ -209,7 +223,6 @@ const MAX_NEWS = 4;
 const MAX_MATCH_REPORTS = 4;
 const KICKOFF_TOAST_WINDOW_START = (24 + 12) * 60 * 60 * 1000;
 const KICKOFF_TOAST_WINDOW_END = 10 * 60 * 1000;
-const GREETING_SEEN_KEY = "maguje_home_greeting_seen";
 
 export async function getMagujeTeamId() {
   if (MAGUJE_TEAM_ID) return MAGUJE_TEAM_ID;
@@ -275,6 +288,21 @@ export function toExternalMatch(row) {
       ? { name: "Maguje FC", shortName: "Maguje", crestUrl: "/assets/maguje-crest.png" }
       : { name: row.opponent?.name || "TBD", shortName: row.opponent?.name, crestUrl: row.opponent?.logo_url },
   };
+}
+
+/*
+ * Latest gallery upload — same table + ordering as the Gallery
+ * page itself (media_library, created_at desc), so the hero
+ * background stays in sync automatically with new uploads.
+ */
+async function fetchLatestGalleryImageUrl() {
+  const { data } = await supabase
+    .from("media_library")
+    .select("url")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.url || null;
 }
 
 export async function homeView() {
@@ -351,8 +379,23 @@ export async function homeView() {
   const root = document.querySelector("#app");
   const carouselInstances = [];
 
-  await loadFixturesAndHero(root, cleanupFns);
-  loadSpotlight(root, carouselInstances);
+  // Fixtures data (for hero text + live/upcoming cards), spotlight
+  // data (for hero text + spotlight section), and the hero's
+  // background image all fetch in parallel, then the hero is
+  // built once everything it needs is ready.
+  const [fixturesInfo, spotlightItems, heroImageUrl] = await Promise.all([
+    loadFixturesData(root),
+    loadSpotlightData(),
+    fetchLatestGalleryImageUrl(),
+  ]);
+
+  buildHero(root.querySelector('[data-slot="hero-wrap"]'), {
+    ...fixturesInfo,
+    spotlightItems,
+    heroImageUrl,
+  }, cleanupFns);
+
+  renderSpotlightSection(root, spotlightItems, carouselInstances);
   loadSecondaryNews(root, carouselInstances);
   loadFeaturedMatchReport(root, carouselInstances);
 
@@ -371,8 +414,13 @@ export async function homeView() {
   };
 }
 
-async function loadFixturesAndHero(root, cleanupFns) {
-  const heroWrap = root.querySelector('[data-slot="hero-wrap"]');
+/*
+ * Fetches live match, next upcoming match, latest news, latest
+ * match report. Renders the two independent fixture cards and
+ * the kickoff toast directly. Returns the raw data so the hero
+ * can build its own summary slides from the same information.
+ */
+async function loadFixturesData(root) {
   const liveWrap = root.querySelector('[data-slot="live-wrap"]');
   const upcomingWrap = root.querySelector('[data-slot="upcoming-wrap"]');
 
@@ -390,7 +438,7 @@ async function loadFixturesAndHero(root, cleanupFns) {
       { data: newsRows, error: newsErr },
       { data: reportRows, error: reportErr },
     ] = await Promise.all([
-      supabase.from("matches").select(`id, slug, match_date, match_time, our_score, opponent_score, opponent_team_id, is_home`).eq("is_live", true).limit(1),
+      supabase.from("matches").select(`id, slug, match_date, match_time, our_score, opponent_score, opponent_team_id, is_home`).eq("is_live", true).eq("is_internal", true).limit(1),
       supabase.from("matches").select(`id, slug, match_date, match_time, our_score, opponent_score, opponent_team_id, is_home, status, venue`).eq("is_internal", true).in("status", ["scheduled", "pending"]).gte("match_date", today).order("match_date", { ascending: true }).order("match_time", { ascending: true }).limit(MAX_FIXTURES),
       supabase.from("news_posts").select("id, slug, title, created_at").order("created_at", { ascending: false }).limit(1),
       supabase.from("match_report_posts").select("id, slug, title, created_at").order("created_at", { ascending: false }).limit(1),
@@ -435,16 +483,17 @@ async function loadFixturesAndHero(root, cleanupFns) {
       upcomingWrap.innerHTML = "";
     }
 
-    buildHero(heroWrap, { liveMatch, nextUpcoming, latestNews, latestReport }, cleanupFns);
-
     observeLazyImages(liveWrap);
     observeLazyImages(upcomingWrap);
 
-    cleanupFns.push(startKickoffToast(root, nextUpcoming));
+    startKickoffToast(root, nextUpcoming);
+
+    return { liveMatch, nextUpcoming, latestNews, latestReport };
   } catch (err) {
-    console.error("[home] fixtures/hero load failed:", err);
-    heroWrap.innerHTML = states.error();
-    states.bindRetry(heroWrap, () => loadFixturesAndHero(root, cleanupFns));
+    console.error("[home] fixtures load failed:", err);
+    liveWrap.hidden = true;
+    upcomingWrap.hidden = true;
+    return { liveMatch: null, nextUpcoming: null, latestNews: null, latestReport: null };
   }
 }
 
@@ -463,11 +512,15 @@ function getGreeting() {
 }
 
 /*
- * Greeting is static chrome pinned at the top of the hero — it is
- * NOT a carousel slide and never scrolls. The carousel below it
- * only ever contains the live/upcoming/news/report summary slides.
+ * HERO
+ * Background: latest gallery image + green overlay (falls back
+ * to the plain pitch-shadow color if no gallery image exists).
+ * Greeting is static chrome, pinned above the carousel — never
+ * part of the sliding track.
+ * Carousel slides, in order: Live, Upcoming, News, Match Report,
+ * then one short slide per currently-eligible Spotlight category.
  */
-function buildHero(heroWrap, { liveMatch, nextUpcoming, latestNews, latestReport }, cleanupFns) {
+function buildHero(heroWrap, { liveMatch, nextUpcoming, latestNews, latestReport, spotlightItems, heroImageUrl }, cleanupFns) {
   const slides = [];
 
   if (liveMatch) {
@@ -475,7 +528,7 @@ function buildHero(heroWrap, { liveMatch, nextUpcoming, latestNews, latestReport
     const venueBit = liveMatch.is_home === false ? ` at ${liveMatch.venue || opponentName + "'s ground"}` : "";
     slides.push(`
       <div class="home-hero-slide">
-        <div class="home-hero-slide__live-badge">${liveIndicator("Live")}</div>
+        <span class="home-hero-slide__badge home-hero-slide__badge--live">${liveIndicator("Live")}</span>
         <h2 class="text-display-md home-hero-slide__title">Maguje is playing ${escapeHtml(opponentName)}${venueBit}</h2>
         <p class="text-body-sm home-hero-slide__text">Don't miss live updates for this match.</p>
       </div>
@@ -515,6 +568,16 @@ function buildHero(heroWrap, { liveMatch, nextUpcoming, latestNews, latestReport
     `);
   }
 
+  (spotlightItems || []).forEach((item) => {
+    slides.push(`
+      <div class="home-hero-slide">
+        <span class="home-hero-slide__badge">${escapeHtml(item.label)}</span>
+        <h2 class="text-display-md home-hero-slide__title">${escapeHtml(item.playerName)}</h2>
+        <p class="text-body-sm home-hero-slide__text">${escapeHtml(item.statLine)}</p>
+      </div>
+    `);
+  });
+
   if (!slides.length) {
     slides.push(`
       <div class="home-hero-slide">
@@ -524,8 +587,11 @@ function buildHero(heroWrap, { liveMatch, nextUpcoming, latestNews, latestReport
     `);
   }
 
+  const bgStyle = heroImageUrl ? ` style="background-image: url('${heroImageUrl}');"` : "";
+
   heroWrap.innerHTML = `
-    <div class="home-hero">
+    <div class="home-hero"${bgStyle}>
+      <div class="home-hero__overlay"></div>
       <div class="home-hero__greeting">
         <img src="/assets/maguje-crest.png" alt="" class="home-hero__greeting-crest">
         <h1 class="text-display-lg home-hero__greeting-title">${getGreeting()}, welcome to Maguje FC</h1>
@@ -550,11 +616,11 @@ function startKickoffToast(root, match) {
   }
 
   const slot = root.querySelector('[data-slot="kickoff-toast"]');
-  if (!slot) return () => {};
+  if (!slot) return;
 
   if (!match) {
     slot.innerHTML = "";
-    return () => {};
+    return;
   }
 
   const kickoffIso = combineDateTime(match.match_date, match.match_time);
@@ -562,7 +628,7 @@ function startKickoffToast(root, match) {
 
   if (Number.isNaN(target)) {
     slot.innerHTML = "";
-    return () => {};
+    return;
   }
 
   function render() {
@@ -579,11 +645,6 @@ function startKickoffToast(root, match) {
 
   render();
   KICKOFF_TOAST_INTERVAL = setInterval(render, 30000);
-
-  return () => {
-    clearInterval(KICKOFF_TOAST_INTERVAL);
-    KICKOFF_TOAST_INTERVAL = null;
-  };
 }
 
 function formatKickoffToastTime(diffMs) {
@@ -599,16 +660,13 @@ function formatKickoffToastTime(diffMs) {
 }
 
 /*
- * PLAYER SPOTLIGHT — mobile only: single-card-at-a-time carousel
- * through whichever of the 5 categories are currently eligible.
- * Placeholder cards pad to a minimum of 2 slides.
+ * PLAYER SPOTLIGHT — fetch only, no DOM. Returns an array of
+ * eligible items (ties excluded), each with everything needed
+ * for both the hero's short slide text and the full spotlight
+ * card. Returns [] if fetch fails or nothing is eligible yet —
+ * callers handle the placeholder case themselves.
  */
-async function loadSpotlight(root, carouselInstances) {
-  const carouselRoot = root.querySelector('[data-slot="spotlight-carousel"]');
-  const track = carouselRoot.querySelector("[data-track]");
-
-  let cards = [];
-
+async function loadSpotlightData() {
   try {
     const [
       { data: matchStandout },
@@ -624,61 +682,55 @@ async function loadSpotlight(root, carouselInstances) {
       supabase.from("v_spotlight_discipline").select("*").limit(1),
     ]);
 
+    const items = [];
+
     if (matchStandout?.[0] && !matchStandout[0].is_tied) {
       const s = matchStandout[0];
-      cards.push(spotlightCard({
+      items.push({
         label: "Match Standout",
         playerName: s.player_name, photoUrl: s.photo_url, playerSlug: s.player_slug,
         statLine: statLineFromGoalsAssists(s.goals_in_match, s.assists_in_match),
-        meta: s.opponent_name ? `vs ${escapeHtml(s.opponent_name)}` : "",
-      }));
+        meta: s.opponent_name ? `vs ${s.opponent_name}` : "",
+      });
     }
     if (compStandout?.[0] && !compStandout[0].is_tied) {
       const s = compStandout[0];
-      cards.push(spotlightCard({
+      items.push({
         label: "Competition Standout",
         playerName: s.player_name, photoUrl: s.photo_url, playerSlug: s.player_slug,
         statLine: statLineFromGoalsAssists(s.goals, s.assists),
-      }));
+      });
     }
     if (topScorers?.[0] && !topScorers[0].is_tied) {
       const s = topScorers[0];
-      cards.push(spotlightCard({
+      items.push({
         label: "Top Scorer",
         playerName: s.player_name, photoUrl: s.photo_url, playerSlug: s.player_slug,
         statLine: `${s.goals} goal${s.goals === 1 ? "" : "s"}`,
-      }));
+      });
     }
     if (topAssists?.[0] && !topAssists[0].is_tied) {
       const s = topAssists[0];
-      cards.push(spotlightCard({
+      items.push({
         label: "Top Assists",
         playerName: s.player_name, photoUrl: s.photo_url, playerSlug: s.player_slug,
         statLine: `${s.assists} assist${s.assists === 1 ? "" : "s"}`,
-      }));
+      });
     }
     if (discipline?.[0] && !discipline[0].is_tied) {
       const s = discipline[0];
-      cards.push(spotlightCard({
+      items.push({
         label: "Discipline",
         playerName: s.player_name, photoUrl: s.photo_url, playerSlug: s.player_slug,
         statLine: `${s.card_count} card${s.card_count === 1 ? "" : "s"} · ${s.appearances} apps`,
-      }));
+      });
     }
+
+    return items;
   } catch (err) {
     console.error("[home] spotlight fetch failed:", err);
-    cards = [];
+    return [];
   }
-
-  if (!cards.length) {
-    cards = [spotlightPlaceholderCard(), spotlightPlaceholderCard()];
-  }
-
-  track.innerHTML = cards.map((c) => `<div class="carousel__slide">${c}</div>`).join("");
-  observeLazyImages(track);
-
-  const instance = initCarousel(carouselRoot);
-  carouselInstances.push(instance);
 }
 
 function statLineFromGoalsAssists(goals = 0, assists = 0) {
@@ -686,6 +738,36 @@ function statLineFromGoalsAssists(goals = 0, assists = 0) {
   if (goals) parts.push(`${goals} goal${goals === 1 ? "" : "s"}`);
   if (assists) parts.push(`${assists} assist${assists === 1 ? "" : "s"}`);
   return parts.length ? parts.join(", ") : "Standout performance";
+}
+
+/*
+ * Renders the dedicated Spotlight section (single-card-at-a-time
+ * carousel) from data already fetched by loadSpotlightData().
+ */
+function renderSpotlightSection(root, spotlightItems, carouselInstances) {
+  const carouselRoot = root.querySelector('[data-slot="spotlight-carousel"]');
+  const track = carouselRoot.querySelector("[data-track]");
+
+  let cardsHtml = (spotlightItems || []).map((item) =>
+    spotlightCard({
+      label: item.label,
+      playerName: item.playerName,
+      photoUrl: item.photoUrl,
+      playerSlug: item.playerSlug,
+      statLine: item.statLine,
+      meta: item.meta,
+    }),
+  );
+
+  if (!cardsHtml.length) {
+    cardsHtml = [spotlightPlaceholderCard(), spotlightPlaceholderCard()];
+  }
+
+  track.innerHTML = cardsHtml.map((c) => `<div class="carousel__slide">${c}</div>`).join("");
+  observeLazyImages(track);
+
+  const instance = initCarousel(carouselRoot);
+  carouselInstances.push(instance);
 }
 
 async function loadSecondaryNews(root, carouselInstances) {
