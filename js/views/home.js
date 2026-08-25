@@ -13,41 +13,16 @@ import { initCarousel } from "../components/carousel.js";
 injectStyle(
   "home-view",
   `
-  /* =========================================================
-     HOME PAGE - GLOBAL OVERFLOW PROTECTION
-     ========================================================= */
-
   .home-page.container {
     width: 100%;
     overflow-x: hidden;
     max-width: 1280px;
   }
 
-  @media (min-width: 1440px) {
-    .home-page.container { max-width: 1600px; }
-  }
-
-  @media (min-width: 1920px) {
-    .home-page.container { max-width: 1800px; }
-  }
+  @media (min-width: 1440px) { .home-page.container { max-width: 1600px; } }
+  @media (min-width: 1920px) { .home-page.container { max-width: 1800px; } }
 
   .home-page * { min-width: 0; }
-
-  /* =========================================================
-     ROW 1 — Hero + Live + Upcoming + Spotlight (inline)
-
-     Single shared grid. DOM order = priority order:
-     hero, live, upcoming, spotlight-inline. Column count
-     changes per breakpoint; items just wrap naturally, so
-     there's never a fixed empty cell — column count always
-     tracks how many items actually exist.
-
-     Desktop only: if BOTH live and upcoming exist, spotlight
-     is left OUT of this grid entirely (row1 = hero+live+
-     upcoming = exactly 3) and instead renders in its own
-     dedicated 4-column row further down the page. That
-     decision is made in JS (see placeSpotlight()).
-     ========================================================= */
 
   .feed-row1 {
     display: grid;
@@ -65,17 +40,8 @@ injectStyle(
   @media (min-width: 1200px) {
     .feed-row1 { grid-template-columns: repeat(3, 1fr); }
 
-    /* Only case where row1 would otherwise leave a gap:
-       hero + spotlight alone, nothing else available.
-       Spotlight widens to fill both remaining columns. */
-    .feed-row1__spotlight--wide {
-      grid-column: span 2;
-    }
+    .feed-row1__spotlight--wide { grid-column: span 2; }
   }
-
-  /* =========================================================
-     HERO CAROUSEL
-     ========================================================= */
 
   .home-hero-carousel {
     position: relative;
@@ -97,11 +63,7 @@ injectStyle(
     opacity: 0.5;
   }
 
-  .home-hero-carousel .carousel__track {
-    position: relative;
-    z-index: 1;
-    height: 280px;
-  }
+  .home-hero-carousel .carousel__track { position: relative; z-index: 1; height: 280px; }
 
   .home-hero-slide {
     display: flex;
@@ -111,21 +73,9 @@ injectStyle(
     height: 100%;
   }
 
-  .home-hero-slide__crest {
-    width: clamp(56px, 8vw, 84px);
-    height: auto;
-    margin-bottom: var(--sp-sm);
-  }
-
-  .home-hero-slide__title {
-    color: var(--color-summit-white);
-    margin-bottom: var(--sp-2xs);
-  }
-
-  .home-hero-slide__text {
-    color: rgba(247,249,246,0.85);
-    max-width: 48ch;
-  }
+  .home-hero-slide__crest { width: clamp(56px, 8vw, 84px); height: auto; margin-bottom: var(--sp-sm); }
+  .home-hero-slide__title { color: var(--color-summit-white); margin-bottom: var(--sp-2xs); }
+  .home-hero-slide__text { color: rgba(247,249,246,0.85); max-width: 48ch; }
 
   .home-hero-slide__live-badge {
     display: inline-flex;
@@ -137,10 +87,6 @@ injectStyle(
     color: var(--color-live);
     margin-bottom: var(--sp-xs);
   }
-
-  /* =========================================================
-     KICKOFF REMINDER TOAST (unchanged)
-     ========================================================= */
 
   .home-kickoff-toast {
     display: flex;
@@ -162,16 +108,7 @@ injectStyle(
   .home-kickoff-toast__time { font-family: var(--font-mono); font-weight: 700; }
   .home-kickoff-toast__opp { color: rgba(247,249,246,0.75); overflow: hidden; text-overflow: ellipsis; }
 
-  /* =========================================================
-     GENERAL SECTIONS
-     ========================================================= */
-
-  .home-section {
-    padding-block: var(--sp-lg);
-    width: 100%;
-    min-width: 0;
-    overflow: hidden;
-  }
+  .home-section { padding-block: var(--sp-lg); width: 100%; min-width: 0; overflow: hidden; }
 
   .home-section__header {
     display: flex;
@@ -192,17 +129,7 @@ injectStyle(
     white-space: nowrap;
   }
 
-  /* =========================================================
-     FIXTURE CARDS (Live / Upcoming — independent)
-     ========================================================= */
-
-  .home-fixture-card-wrap {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-sm);
-    min-width: 0;
-    width: 100%;
-  }
+  .home-fixture-card-wrap { display: flex; flex-direction: column; gap: var(--sp-sm); min-width: 0; width: 100%; }
 
   .home-fixture-card-wrap__label {
     display: flex;
@@ -216,28 +143,10 @@ injectStyle(
 
   .home-fixture-card-wrap--live .home-fixture-card-wrap__label { color: var(--color-live); }
 
-  /* =========================================================
-     SPOTLIGHT — inline mode (lives inside .feed-row1)
-     ========================================================= */
-
   .home-spotlight-inline { width: 100%; min-width: 0; }
 
-  .spotlight-row {
-    display: flex;
-    gap: var(--sp-sm);
-    width: 100%;
-    min-width: 0;
-  }
-
-  /* =========================================================
-     QUAD ROW — shared by Spotlight-standalone, News, Reports
-     Mobile: 1 card visible, native scroll+snap
-     Tablet: 2 cards visible, native scroll+snap
-     Desktop: static grid, 4 across, no scroll
-     (Spotlight-standalone may exceed 4 items — in that one
-     case desktop stays a carousel instead of going static;
-     controlled via .quad-row--overflow)
-     ========================================================= */
+  /* Only used for the desktop "wide" 2-column case with exactly 2 cards */
+  .spotlight-row { display: flex; gap: var(--sp-sm); width: 100%; min-width: 0; }
 
   .quad-row .carousel__slide { flex: 0 0 100%; }
 
@@ -286,10 +195,6 @@ const MAX_MATCH_REPORTS = 4;
 const KICKOFF_TOAST_WINDOW_START = (24 + 12) * 60 * 60 * 1000;
 const KICKOFF_TOAST_WINDOW_END = 10 * 60 * 1000;
 const GREETING_SEEN_KEY = "maguje_home_greeting_seen";
-
-/* =========================================================
-   UNCHANGED HELPERS (identical to before)
-   ========================================================= */
 
 export async function getMagujeTeamId() {
   if (MAGUJE_TEAM_ID) return MAGUJE_TEAM_ID;
@@ -357,10 +262,6 @@ export function toExternalMatch(row) {
   };
 }
 
-/* =========================================================
-   HOME VIEW
-   ========================================================= */
-
 export async function homeView() {
   const cleanupFns = [];
 
@@ -423,10 +324,6 @@ export async function homeView() {
     },
   };
 }
-
-/* =========================================================
-   HERO + LIVE + UPCOMING
-   ========================================================= */
 
 async function loadFixturesAndHero(root, cleanupFns) {
   const heroWrap = root.querySelector('[data-slot="hero-wrap"]');
@@ -514,10 +411,6 @@ function getKickoffTime(match) {
   const time = new Date(value).getTime();
   return Number.isNaN(time) ? 0 : time;
 }
-
-/* =========================================================
-   HERO — greeting (once) + sliding summary carousel
-   ========================================================= */
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -610,10 +503,6 @@ function buildHero(heroWrap, { liveMatch, nextUpcoming, latestNews, latestReport
   cleanupFns.push(() => instance.destroy());
 }
 
-/* =========================================================
-   KICKOFF REMINDER TOAST (unchanged)
-   ========================================================= */
-
 function startKickoffToast(root, match) {
   if (KICKOFF_TOAST_INTERVAL) {
     clearInterval(KICKOFF_TOAST_INTERVAL);
@@ -670,8 +559,18 @@ function formatKickoffToastTime(diffMs) {
 }
 
 /* =========================================================
-   PLAYER SPOTLIGHT — fetch once, then decide placement
-   (inline in .feed-row1, or standalone 4-col row) responsively
+   PLAYER SPOTLIGHT
+   Two distinct render modes for the inline slot:
+   - SINGLE-SLOT (mobile always, tablet always, desktop when
+     spotlight shares row1 with live and/or upcoming): one
+     card visible at a time, always a carousel, regardless of
+     how many cards exist (2 minimum, since placeholder pads).
+   - WIDE (desktop only, spotlight is the ONLY thing next to
+     hero, gets both remaining row1 columns): exactly 2 cards
+     shown statically side by side; 3+ cards paginate as pairs
+     with carousel+scroll.
+   Plus the STANDALONE 4-column dedicated row (desktop only,
+   when both live and upcoming already filled row1).
    ========================================================= */
 
 async function placeSpotlight(root, { hasLive, hasUpcoming }, carouselInstances, cleanupFns) {
@@ -743,41 +642,55 @@ async function placeSpotlight(root, { hasLive, hasUpcoming }, carouselInstances,
     cards = [];
   }
 
-  // Before ANY match this season, or fetch failure: two placeholders.
   if (!cards.length) {
     cards = [spotlightPlaceholderCard(), spotlightPlaceholderCard()];
   }
 
-  function renderInline() {
-    inlineWrap.hidden = false;
-    standaloneSection.hidden = true;
+  let activeInstances = [];
 
-    const onlyOptionInRow1 = !hasLive && !hasUpcoming;
-    inlineWrap.classList.toggle("feed-row1__spotlight--wide", onlyOptionInRow1);
+  function clearActiveInstances() {
+    activeInstances.forEach((i) => i.destroy());
+    activeInstances = [];
+  }
+
+  function renderInlineSingleSlot() {
+    inlineWrap.classList.remove("feed-row1__spotlight--wide");
+    inlineWrap.innerHTML = `
+      <div class="carousel" data-slot="spotlight-inline-carousel">
+        <div class="carousel__track" data-track>
+          ${cards.map((c) => `<div class="carousel__slide">${c}</div>`).join("")}
+        </div>
+      </div>`;
+    const el = inlineWrap.querySelector('[data-slot="spotlight-inline-carousel"]');
+    const instance = initCarousel(el);
+    activeInstances.push(instance);
+    carouselInstances.push(instance);
+    observeLazyImages(inlineWrap);
+  }
+
+  function renderInlineWideSlot() {
+    inlineWrap.classList.add("feed-row1__spotlight--wide");
 
     if (cards.length <= 2) {
       const [a, b] = cards;
-      inlineWrap.innerHTML = `<div class="spotlight-row">${a || spotlightPlaceholderCard()}${b || spotlightPlaceholderCard()}</div>`;
+      inlineWrap.innerHTML = `<div class="spotlight-row">${a}${b || spotlightPlaceholderCard()}</div>`;
       observeLazyImages(inlineWrap);
       return;
     }
 
-    // More than 2 categories eligible — paginate as pairs, carousel.
     const pages = [];
     for (let i = 0; i < cards.length; i += 2) {
       pages.push(`<div class="carousel__slide"><div class="spotlight-row">${cards[i]}${cards[i + 1] || spotlightPlaceholderCard()}</div></div>`);
     }
     inlineWrap.innerHTML = `<div class="carousel" data-slot="spotlight-inline-carousel"><div class="carousel__track" data-track>${pages.join("")}</div></div>`;
-    const carouselEl = inlineWrap.querySelector('[data-slot="spotlight-inline-carousel"]');
-    const instance = initCarousel(carouselEl);
+    const el = inlineWrap.querySelector('[data-slot="spotlight-inline-carousel"]');
+    const instance = initCarousel(el);
+    activeInstances.push(instance);
     carouselInstances.push(instance);
     observeLazyImages(inlineWrap);
   }
 
   function renderStandalone() {
-    inlineWrap.hidden = true;
-    standaloneSection.hidden = false;
-
     const overflow = cards.length > 4;
     standaloneRoot.classList.toggle("quad-row--overflow", overflow);
 
@@ -791,21 +704,34 @@ async function placeSpotlight(root, { hasLive, hasUpcoming }, carouselInstances,
       .join("");
 
     const instance = initCarousel(standaloneRoot);
+    activeInstances.push(instance);
     carouselInstances.push(instance);
     observeLazyImages(standaloneRoot);
   }
 
   function apply() {
-    // Standalone only makes sense on desktop AND only when both
-    // Live and Upcoming already filled row1's 3 slots.
-    const isDesktop = window.matchMedia("(min-width: 1200px)").matches;
-    const goesStandalone = isDesktop && hasLive && hasUpcoming;
+    clearActiveInstances();
     inlineWrap.innerHTML = "";
     standaloneTrack.innerHTML = "";
+
+    const isDesktop = window.matchMedia("(min-width: 1200px)").matches;
+    const goesStandalone = isDesktop && hasLive && hasUpcoming;
+
     if (goesStandalone) {
+      inlineWrap.hidden = true;
+      standaloneSection.hidden = false;
       renderStandalone();
+      return;
+    }
+
+    inlineWrap.hidden = false;
+    standaloneSection.hidden = true;
+
+    const isWide = isDesktop && !hasLive && !hasUpcoming;
+    if (isWide) {
+      renderInlineWideSlot();
     } else {
-      renderInline();
+      renderInlineSingleSlot();
     }
   }
 
@@ -814,7 +740,10 @@ async function placeSpotlight(root, { hasLive, hasUpcoming }, carouselInstances,
   const desktopQuery = window.matchMedia("(min-width: 1200px)");
   const onChange = () => apply();
   desktopQuery.addEventListener("change", onChange);
-  cleanupFns.push(() => desktopQuery.removeEventListener("change", onChange));
+  cleanupFns.push(() => {
+    desktopQuery.removeEventListener("change", onChange);
+    clearActiveInstances();
+  });
 }
 
 function statLineFromGoalsAssists(goals = 0, assists = 0) {
@@ -823,11 +752,6 @@ function statLineFromGoalsAssists(goals = 0, assists = 0) {
   if (assists) parts.push(`${assists} assist${assists === 1 ? "" : "s"}`);
   return parts.length ? parts.join(", ") : "Standout performance";
 }
-
-/* =========================================================
-   LATEST NEWS (data logic unchanged; render target + desktop
-   static-grid/placeholder behavior updated)
-   ========================================================= */
 
 async function loadSecondaryNews(root, carouselInstances) {
   const carouselRoot = root.querySelector('[data-slot="news-carousel"]');
@@ -868,10 +792,6 @@ async function loadSecondaryNews(root, carouselInstances) {
   }
 }
 
-/* =========================================================
-   LATEST MATCH REPORTS (same pattern)
-   ========================================================= */
-
 async function loadFeaturedMatchReport(root, carouselInstances) {
   const carouselRoot = root.querySelector('[data-slot="reports-carousel"]');
   const track = carouselRoot.querySelector("[data-track]");
@@ -908,13 +828,6 @@ async function loadFeaturedMatchReport(root, carouselInstances) {
   }
 }
 
-/*
- * Shared quad-row renderer: mobile shows 1/view, tablet 2/view
- * (native scroll+snap, CSS-driven), desktop shows a static 4-up
- * grid, padded with placeholder cards if fewer than 4 exist.
- * News/Reports never exceed 4 (fetch is capped), so no overflow
- * case here — that's only relevant for Spotlight-standalone.
- */
 function renderQuadRow(carouselRoot, track, cardsHtml, carouselInstances) {
   const items = [...cardsHtml];
   while (items.length < 4) {
@@ -930,10 +843,6 @@ function renderQuadRow(carouselRoot, track, cardsHtml, carouselInstances) {
   const instance = initCarousel(carouselRoot);
   carouselInstances.push(instance);
 }
-
-/* =========================================================
-   SMALL HTML SAFETY HELPER (unchanged)
-   ========================================================= */
 
 function escapeHtml(value) {
   if (value === null || value === undefined) return "";
