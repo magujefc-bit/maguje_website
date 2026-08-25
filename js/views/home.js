@@ -147,7 +147,6 @@ injectStyle(
     gap: var(--sp-2xs);
     width: fit-content;
     max-width: 100%;
-    margin-bottom: var(--sp-md);
     padding: var(--sp-2xs) var(--sp-sm);
     background: var(--color-ridge-green);
     border-radius: 999px;
