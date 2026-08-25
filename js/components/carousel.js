@@ -1,24 +1,5 @@
 import { injectStyle } from '../utils/inject-style.js';
 
-/*
- * Shared drag-tracking carousel used by: Hero, Player Spotlight,
- * Latest News, Latest Match Reports.
- *
- * Built on native horizontal scroll + scroll-snap so the browser
- * handles real drag/swipe physics (speed, momentum) instead of a
- * custom pointer-tracking reimplementation.
- *
- * Layered on top of that native scroll:
- * - autoplay: advances one slide every `intervalMs`
- * - pauses autoplay while the user is actively touching/dragging
- * - pauses autoplay entirely while the carousel is off-screen
- * - resumes from whatever slide it was on (scroll position is
- *   never reset — it's a real DOM element, so it just sits there
- *   while the interval is paused)
- * - optional `skipIndicesOnLoop`: indices autoplay should not loop
- *   back around to (used for the Hero's one-time greeting slide)
- */
-
 injectStyle('carousel-base', `
   .carousel {
     position: relative;
@@ -47,20 +28,11 @@ injectStyle('carousel-base', `
     min-width: 0;
     scroll-snap-align: start;
   }
-
-  .carousel--static .carousel__track {
-    overflow: visible;
-    scroll-snap-type: none;
-  }
-
-  .carousel--static .carousel__slide {
-    scroll-snap-align: none;
-  }
 `);
 
 export function initCarousel(rootEl, options = {}) {
   const {
-    intervalMs = 8000,   // was 5000
+    intervalMs = 8000,
     autoplay = true,
     pauseOffscreen = true,
     skipIndicesOnLoop = [],
@@ -135,8 +107,6 @@ export function initCarousel(rootEl, options = {}) {
     if (!isInteracting && !isOffscreen) startTimer();
   }
 
-  /* Pause immediately on manual interaction; resume a beat after
-     the user lets go, from wherever they left the scroll. */
   function onInteractionStart() {
     isInteracting = true;
     stopTimer();
