@@ -13,12 +13,11 @@ import { initCarousel } from "../components/carousel.js";
 const MOBILE_QUERY = "(max-width: 767px)";
 
 injectStyle(
-  "home-view",
-  `
   .home-page.container {
     width: 100%;
     overflow-x: hidden;
     padding-inline: var(--sp-sm);
+    padding-top: var(--sp-md);
   }
 
   .home-page * { min-width: 0; }
@@ -336,10 +335,9 @@ export async function homeView() {
   await viewContainer.render(`
     <div class="container home-page">
 
-      <div data-slot="kickoff-toast"></div>
-
-      <div class="home-feed">
+           <div class="home-feed">
         <div data-slot="hero-wrap">${skeletons.heroCarousel()}</div>
+        <div data-slot="kickoff-toast"></div>
         <div class="home-fixture-card-wrap home-fixture-card-wrap--live" data-slot="live-wrap" hidden></div>
         <div class="home-fixture-card-wrap" data-slot="upcoming-wrap" hidden></div>
 
