@@ -13,6 +13,8 @@ import { initCarousel } from "../components/carousel.js";
 const MOBILE_QUERY = "(max-width: 767px)";
 
 injectStyle(
+  "home-view",
+  `
   .home-page.container {
     width: 100%;
     overflow-x: hidden;
