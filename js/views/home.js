@@ -10,8 +10,6 @@ import { observeLazyImages } from "../components/lazy-image.js";
 import { injectStyle } from "../utils/inject-style.js";
 import { initCarousel } from "../components/carousel.js";
 
-const MOBILE_QUERY = "(max-width: 767px)";
-
 injectStyle(
   "home-view",
   `
@@ -29,27 +27,6 @@ injectStyle(
     flex-direction: column;
     gap: var(--sp-lg);
     width: 100%;
-  }
-
-  .home-desktop-gate {
-    max-width: 480px;
-    margin: 15vh auto;
-    text-align: center;
-    padding: var(--sp-lg);
-  }
-
-  .home-desktop-gate__icon {
-    font-size: 2.5rem;
-    margin-bottom: var(--sp-sm);
-  }
-
-  .home-desktop-gate__title {
-    font-size: var(--fs-xl);
-    margin-bottom: var(--sp-xs);
-  }
-
-  .home-desktop-gate__text {
-    color: rgba(16,36,26,0.65);
   }
 
   /* HERO — background image from latest gallery upload, with a
@@ -307,31 +284,6 @@ async function fetchLatestGalleryImageUrl() {
 
 export async function homeView() {
   const cleanupFns = [];
-  const isMobile = window.matchMedia(MOBILE_QUERY).matches;
-
-  if (!isMobile) {
-    await viewContainer.render(`
-      <div class="container home-page">
-        <div class="home-desktop-gate">
-          <div class="home-desktop-gate__icon">📱</div>
-          <h1 class="home-desktop-gate__title">This app is currently meant for mobile users</h1>
-          <p class="home-desktop-gate__text">Desktop support is coming soon. Kindly switch to a mobile device to view Maguje FC.</p>
-        </div>
-      </div>
-    `);
-
-    const mq = window.matchMedia(MOBILE_QUERY);
-    const onChange = (e) => {
-      if (e.matches) homeView();
-    };
-    mq.addEventListener("change", onChange);
-
-    return {
-      cleanup() {
-        mq.removeEventListener("change", onChange);
-      },
-    };
-  }
 
   await viewContainer.render(`
     <div class="container home-page">
@@ -397,13 +349,6 @@ export async function homeView() {
   renderSpotlightSection(root, spotlightItems, carouselInstances);
   loadSecondaryNews(root, carouselInstances);
   loadFeaturedMatchReport(root, carouselInstances);
-
-  const mq = window.matchMedia(MOBILE_QUERY);
-  const onChange = (e) => {
-    if (!e.matches) homeView();
-  };
-  mq.addEventListener("change", onChange);
-  cleanupFns.push(() => mq.removeEventListener("change", onChange));
 
   return {
     cleanup() {
@@ -860,4 +805,4 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
-}
+         }
