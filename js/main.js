@@ -3,6 +3,8 @@ import { crestLoader } from "./components/crest-loader.js";
 import { header } from "./components/header.js";
 import { footer } from "./components/footer.js";
 
+import { withMobileGate } from "./utils/mobile-gate.js";
+
 import { homeView } from "./views/home.js";
 import { newsView } from "./views/news.js";
 import { newsDetailsView } from "./views/news-details.js";
@@ -188,46 +190,47 @@ async function boot() {
   await footer.mount();
 
   router
-    .add("/", homeView)
-    .add("/news", newsView)
-    .add("/news/:slug", newsDetailsView)
-    .add("/fixtures", fixturesView)
-    .add("/results", resultsView)
-    .add("/match-reports", matchReportsView)
-    .add("/match-reports/:slug", matchReportDetailsView)
-    .add("/matches/:slug", matchDetailsView)
-    .add("/live", liveMatchView)
-    .add("/standings", standingsView)
-    .add("/team", teamView)
-    .add("/team/players/:slug", playerProfileView)
-    .add("/team/head-to-head", headToHeadIndexView)
-    .add("/team/head-to-head/:teamId", headToHeadDetailView)
-    .add("/gallery", galleryView)
-    .add("/gallery/:slug", galleryDetailsView)
-    .add("/competitions", competitionsView)
-    .add("/competitions/:slug", competitionDetailsView)
-    .add("/competitions/:slug/standings", competitionStandingsView)
-    .add("/competitions/:slug/fixtures", competitionFixturesView)
-    .add("/competitions/:slug/results", competitionResultsView)
+    .add("/", withMobileGate(homeView))
+    .add("/news", withMobileGate(newsView))
+    .add("/news/:slug", withMobileGate(newsDetailsView))
+    .add("/fixtures", withMobileGate(fixturesView))
+    .add("/results", withMobileGate(resultsView))
+    .add("/match-reports", withMobileGate(matchReportsView))
+    .add("/match-reports/:slug", withMobileGate(matchReportDetailsView))
+    .add("/matches/:slug", withMobileGate(matchDetailsView))
+    .add("/live", withMobileGate(liveMatchView))
+    .add("/standings", withMobileGate(standingsView))
+    .add("/team", withMobileGate(teamView))
+    .add("/team/players/:slug", withMobileGate(playerProfileView))
+    .add("/team/head-to-head", withMobileGate(headToHeadIndexView))
+    .add("/team/head-to-head/:teamId", withMobileGate(headToHeadDetailView))
+    .add("/gallery", withMobileGate(galleryView))
+    .add("/gallery/:slug", withMobileGate(galleryDetailsView))
+    .add("/competitions", withMobileGate(competitionsView))
+    .add("/competitions/:slug", withMobileGate(competitionDetailsView))
+    .add("/competitions/:slug/standings", withMobileGate(competitionStandingsView))
+    .add("/competitions/:slug/fixtures", withMobileGate(competitionFixturesView))
+    .add("/competitions/:slug/results", withMobileGate(competitionResultsView))
     .add(
       "/competitions/:slug/player-statistics",
-      competitionPlayerStatisticsView,
+      withMobileGate(competitionPlayerStatisticsView),
     )
-    .add("/about", aboutView)
-    .add("/about/history", clubHistoryView)
-    .add("/about/vision-mission", visionMissionView)
-    .add("/about/officials", clubOfficialsView)
-    .add("/about/honours", clubHonoursView)
-    .add("/community", communityView)
-    .add("/community/:slug", activityDetailsView)
-    .add("/events", eventsView)
-    .add("/events/:slug", eventDetailsView)
-    .add("/supporters", supportersView)
-    .add("/contact", contactView)
-    .add("/search", searchView)
-    .add("/privacy", privacyView)
-    .add("/terms", termsView)
+    .add("/about", withMobileGate(aboutView))
+    .add("/about/history", withMobileGate(clubHistoryView))
+    .add("/about/vision-mission", withMobileGate(visionMissionView))
+    .add("/about/officials", withMobileGate(clubOfficialsView))
+    .add("/about/honours", withMobileGate(clubHonoursView))
+    .add("/community", withMobileGate(communityView))
+    .add("/community/:slug", withMobileGate(activityDetailsView))
+    .add("/events", withMobileGate(eventsView))
+    .add("/events/:slug", withMobileGate(eventDetailsView))
+    .add("/supporters", withMobileGate(supportersView))
+    .add("/contact", withMobileGate(contactView))
+    .add("/search", withMobileGate(searchView))
+    .add("/privacy", withMobileGate(privacyView))
+    .add("/terms", withMobileGate(termsView))
     // ---------------- Admin dashboard routes ----------------
+    // (never wrapped with withMobileGate — dashboard works on any screen size)
     .add(`${DASH_BASE_PATH}/login`, dashLoginView)
     .add(`${DASH_BASE_PATH}/forgot-password`, dashForgotPasswordView)
     .add(`${DASH_BASE_PATH}/reset-password`, dashResetPasswordView)
@@ -245,10 +248,9 @@ async function boot() {
     .add(`${DASH_BASE_PATH}/results`, dashResultsView)
     .add(`${DASH_BASE_PATH}/live-match`, dashLiveMatchView)
     .add(`${DASH_BASE_PATH}/content`, dashContentDashboardView)
-  .add("/developer", developerView)   // ← ADD THIS
+    .add("/developer", withMobileGate(developerView))   // ← ADD THIS
     .add(`${DASH_BASE_PATH}/developer-profile`, dashDeveloperProfileView)
     .notFound(notFoundView);
-  
 
   // Toggle which shell is visible: public chrome (header/#app/footer)
   // vs. dashboard chrome (#dashboard-shell). Each dashboard view still
