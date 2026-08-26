@@ -122,22 +122,7 @@ injectStyle('content-dashboard-view', `
     flex-wrap: wrap;
   }
 
-  .edit-post-btn {
-    background: #e8f5ed;
-    color: #168a45;
-    border: 1px solid #b8dfc7;
-  }
 
-  .edit-post-btn:hover {
-    background: #d9efdf;
-  }
-
-  .cancel-edit-btn {
-    margin-left: 0.5rem;
-    background: #f2f2f2;
-    color: #555;
-    border: 1px solid #ddd;
-  }
 
   .editing-indicator {
     display: inline-block;
@@ -235,9 +220,9 @@ export async function contentDashboardView(params, query) {
         Publish Post
       </button>
 
-      <button id="cancel-edit-btn" class="cancel-edit-btn" style="display:none;">
-        Cancel Edit
-      </button>
+      <button id="cancel-edit-btn" class="btn-secondary" style="display:none;">
+  Cancel Edit
+</button>
 
       <span id="create-status" class="save-status"></span>
     </div>
@@ -1133,11 +1118,11 @@ export async function contentDashboardView(params, query) {
 
         <div class="post-actions">
 
-          <button
-            class="edit-post-btn"
-          >
-            Edit
-          </button>
+<button
+  class="btn-secondary edit-post-btn"
+>
+  Edit
+</button>
 
           <button
             class="btn-danger delete-post-btn"
