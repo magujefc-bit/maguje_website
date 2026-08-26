@@ -77,58 +77,7 @@ const SIDEBAR_STYLES = `
       transform-origin: top;
     }
 
-    @media (max-width: 800px) {
-      #sidebar {
-        width: 100%;
-        flex-direction: row;
-        flex-wrap: wrap;
-        position: static;
-        height: auto;
-      }
 
-      #menuToggle {
-        display: block;
-      }
-
-      nav#nav {
-        display: block;
-        width: 100%;
-        max-height: 0;
-        opacity: 0;
-        overflow: hidden;
-        padding-top: 0;
-        padding-bottom: 0;
-        transform: translateY(-6px);
-      }
-
-      nav#nav.open {
-        max-height: 900px;
-        opacity: 1;
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-        transform: translateY(0);
-      }
-
-      div.sidebar-footer {
-        width: 100%;
-        max-height: 0;
-        opacity: 0;
-        overflow: hidden;
-        padding-top: 0;
-        padding-bottom: 0;
-        border-top: 0;
-        transform: translateY(-4px);
-      }
-
-      div.sidebar-footer.open {
-        max-height: 140px;
-        opacity: 1;
-        padding-top: 0.9rem;
-        padding-bottom: 0.9rem;
-        border-top: 1px solid #ffffff1a;
-        transform: translateY(0);
-      }
-    }
   </style>
 `;
 
