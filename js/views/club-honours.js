@@ -1,7 +1,7 @@
 import { supabase } from '../supabase-client.js';
 import { viewContainer } from '../view-container.js';
 import { states } from '../components/states.js';
-import { aboutSubNav, aboutHeader } from './about-shared.js';
+import { clubRecordsSubNav, aboutHeader } from './club-shared.js';
 import { injectStyle } from '../utils/inject-style.js';
 
 injectStyle('club-honours-view', `
@@ -14,8 +14,8 @@ injectStyle('club-honours-view', `
 export async function clubHonoursView() {
   await viewContainer.render(`
     <div class="container">
-      ${aboutHeader('Club Honours')}
-      ${aboutSubNav('honours')}
+      ${aboutHeader('Club All-Time Records')}
+      ${clubRecordsSubNav('honours')}
       <div style="padding-bottom: var(--sp-2xl);" data-slot="content"><div class="skel skel-block" style="height:200px;"></div></div>
     </div>`);
 
