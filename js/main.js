@@ -30,6 +30,7 @@ import { aboutView as clubProfileGeneralView } from "./views/about.js";
 import { clubHistoryView } from "./views/club-history.js";
 import { visionMissionView } from "./views/vision-mission.js";
 import { clubOfficialsView } from "./views/club-officials.js";
+import { clubAllTimeStatsView } from "./views/club-all-time-stats.js";
 import { clubHonoursView } from "./views/club-honours.js";
 import { communityView } from "./views/community.js";
 import { activityDetailsView } from "./views/activity-details.js";
@@ -217,7 +218,7 @@ async function boot() {
     // Temporary: bare /club-records points at Honours content until
     // Pass 4 (#7) builds the dedicated All-Time Stats page.
     .add("/club-records", withMobileGate(clubHonoursView))
-    .add("/club-records/honours", withMobileGate(clubHonoursView))
+    .add("/club-records", withMobileGate(clubAllTimeStatsView))
     .add("/officials", withMobileGate(clubOfficialsView))
     .add("/community", withMobileGate(communityView))
     .add("/community/:slug", withMobileGate(activityDetailsView))
