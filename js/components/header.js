@@ -3,9 +3,10 @@ const NAV_GROUPS = [
     title: "Club",
     items: [
       { label: "Home", path: "/" },
-      { label: "About", path: "/about" },
-      { label: "Officials", path: "/about/officials" },
-      { label: "Team", path: "/team" },
+      { label: "Club Profile", path: "/club-profile" },
+      { label: "Club All-Time Records", path: "/club-records" },
+      { label: "Officials", path: "/officials" },
+      { label: "Players", path: "/players" },
     ],
   },
   {
@@ -14,7 +15,7 @@ const NAV_GROUPS = [
       { label: "Fixtures", path: "/fixtures" },
       { label: "Results", path: "/results" },
       { label: "Standings", path: "/standings" },
-      { label: "Head to Head", path: "/team/head-to-head" },
+      { label: "Head to Head", path: "/results/head-to-head" },
       { label: "Competitions", path: "/competitions" },
     ],
   },
@@ -273,10 +274,10 @@ class Header {
 
       if (linkPath === "/") {
         isActive = pathname === "/";
-      } else if (linkPath === "/team") {
+      } else if (linkPath === "/players") {
         isActive =
-          pathname === "/team" ||
-          pathname.startsWith("/team/players");
+          pathname === "/players" ||
+          pathname.startsWith("/players/");
       } else {
         isActive =
           pathname === linkPath ||
