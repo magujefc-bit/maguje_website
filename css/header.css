@@ -86,208 +86,22 @@
   color: var(--color-ridge-green);
 }
 
-/* ---- Mobile menu button ---- */
-.header__menu-btn {
+/* ---- Search button ---- */
+.header__search-btn {
   width: 40px;
   height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.header__menu-icon,
-.header__menu-icon::before,
-.header__menu-icon::after {
-  display: block;
-  width: 22px;
-  height: 2px;
-  background: var(--color-ink);
-  position: relative;
-  transition: transform var(--dur-fast) var(--ease-standard);
-}
-
-.header__menu-icon::before,
-.header__menu-icon::after {
-  content: '';
-  position: absolute;
-}
-
-.header__menu-icon::before {
-  top: -7px;
-}
-
-.header__menu-icon::after {
-  top: 7px;
-}
-
-/* ---- Mobile slide-out menu ---- */
-.mobile-menu {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: min(240px, 72vw);
-  background: var(--color-pitch-shadow);
-  z-index: var(--z-nav);
-  transform: translateX(100%);
-  transition: transform var(--dur-base) var(--ease-standard);
-  padding: var(--sp-lg) var(--sp-sm);
-  overflow-y: auto;
-}
-
-.mobile-menu--open {
-  transform: translateX(0);
-}
-
-.mobile-menu__group {
-  margin-bottom: var(--sp-md);
-}
-
-.mobile-menu__group-title {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(247,249,246,0.45);
-  margin: 0 0 var(--sp-2xs);
-}
-
-.mobile-menu__list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.mobile-menu__link {
-  display: block;
-  font-family: var(--font-display);
-  font-size: var(--fs-sm);
-  color: var(--color-summit-white);
-  padding-block: var(--sp-3xs);
-  border-bottom: 1px solid var(--color-line-inverse);
-}
-
-.mobile-menu__backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(11, 31, 20, 0.5);
-  z-index: calc(var(--z-nav) - 1);
-  opacity: 0;
-  transition: opacity var(--dur-base) var(--ease-standard);
-}
-
-.mobile-menu__backdrop--open {
-  opacity: 1;
-}
-
-/* ---- Mobile header ---- */
-@media (max-width: 767px) {
-  /* Mobile uses the hamburger menu exclusively.
-     Desktop and tablet navigation must not occupy
-     any space in the header. */
-  .nav--desktop,
-  .nav--tablet {
-    display: none;
-  }
-
-  .header__bar {
-    width: 100%;
-    max-width: 100%;
-  }
-}
-
-/* ---- Reduced motion ---- */
-@media (prefers-reduced-motion: reduce) {
-  .mobile-menu,
-  .mobile-menu__backdrop {
-    transition: none;
-  }
-}/* /css/header.css */
-
-#site-header {
-  position: sticky;
-  top: 0;
-  z-index: var(--z-nav);
-  background: var(--color-summit-white);
-  border-bottom: 1px solid var(--color-line);
-}
-
-.header__bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-block: var(--sp-xs);
-  gap: var(--sp-md);
-}
-
-.header__brand {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2xs);
   flex-shrink: 0;
+  font-size: 1.1rem;
+  border-radius: 50%;
+  transition: background var(--dur-fast) var(--ease-standard);
 }
 
-.header__crest {
-  width: clamp(32px, 4vw, 40px);
-  height: auto;
-}
-
-.header__wordmark {
-  font-size: var(--fs-md);
-  color: var(--color-ridge-green);
-  white-space: nowrap;
-}
-
-/* ---- Desktop nav ---- */
-.nav--desktop .nav__list {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-md);
-}
-
-.nav__link {
-  font-family: var(--font-body);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--color-ink);
-  padding-block: var(--sp-2xs);
-  position: relative;
-  white-space: nowrap;
-}
-
-.nav__link::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 2px;
-  background: var(--color-trophy-gold);
-  transform: scaleX(0);
-  transition: transform var(--dur-fast) var(--ease-standard);
-}
-
-.nav__link:hover::after,
-.nav__link--active::after {
-  transform: scaleX(1);
-}
-
-.nav__link--active {
-  color: var(--color-ridge-green);
-}
-
-/* ---- Tablet nav ---- */
-.nav__list--tablet {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-sm);
-}
-
-.nav__more {
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: var(--fs-sm);
-  color: var(--color-ridge-green);
+.header__search-btn:hover,
+.header__search-btn.nav__link--active {
+  background: rgba(16,155,69,0.08);
 }
 
 /* ---- Mobile menu button ---- */
@@ -406,4 +220,4 @@
   .mobile-menu__backdrop {
     transition: none;
   }
-  }
+}
