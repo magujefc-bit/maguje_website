@@ -1,1 +1,10 @@
+/about/vision-mission  /club-profile/mission-vision  301
+/about/history         /club-profile/history         301
+/about/honours         /club-records/honours         301
+/about/officials       /officials                    301
+/about                 /club-profile                 301
+/team/head-to-head/*   /results/head-to-head/:splat  301
+/team/head-to-head     /results/head-to-head         301
+/team/players/*        /players/:splat               301
+/team                  /players                      301
 /*  /index.html  200
