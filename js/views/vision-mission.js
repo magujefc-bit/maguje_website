@@ -2,13 +2,13 @@ import { supabase } from '../supabase-client.js';
 import { viewContainer } from '../view-container.js';
 import { states } from '../components/states.js';
 import { visionMissionSection } from '../components/club-identity.js';
-import { aboutSubNav, aboutHeader } from './about-shared.js';
+import { clubProfileSubNav, aboutHeader } from './club-shared.js';
 
 export async function visionMissionView() {
   await viewContainer.render(`
     <div class="container">
       ${aboutHeader('Vision & Mission')}
-      ${aboutSubNav('vision-mission')}
+      ${clubProfileSubNav('mission-vision')}
       <div style="padding-bottom: var(--sp-2xl);" data-slot="content"><div class="skel skel-block" style="height:200px;"></div></div>
     </div>`);
 
