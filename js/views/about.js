@@ -3,90 +3,65 @@ import { viewContainer } from '../view-container.js';
 import { states } from '../components/states.js';
 import { lazyImage, observeLazyImages } from '../components/lazy-image.js';
 import { injectStyle } from '../utils/inject-style.js';
-import { aboutHeader } from './about-shared.js';
+import { aboutHeader, clubProfileSubNav } from './club-shared.js';
 
 injectStyle('about-view', `
   .about-overview {
-    display: grid;
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
     gap: var(--sp-lg);
     padding-bottom: var(--sp-2xl);
   }
 
-  @media (min-width: 1200px) {
-    .about-overview {
-      grid-template-columns: 2fr 1fr;
-    }
+  .about-crest {
+    width: 84px;
+    height: 84px;
+    margin: 0 auto var(--sp-sm);
   }
 
-  .about-crest {
-    width: 96px;
-    height: 96px;
-    margin-bottom: var(--sp-md);
+  .about-identity {
+    text-align: center;
+  }
+
+  .about-club-name {
+    font-size: var(--fs-lg);
+    font-weight: 700;
+    margin-bottom: var(--sp-3xs);
+  }
+
+  .about-meta-line {
+    font-size: var(--fs-xs);
+    color: rgba(16,36,26,0.55);
+  }
+
+  .about-ground-line {
+    font-size: var(--fs-sm);
+    color: rgba(16,36,26,0.7);
+    margin-top: var(--sp-3xs);
+  }
+
+  .about-ground-line strong {
+    color: var(--color-ink);
+    font-weight: 600;
+  }
+
+  .about-divider {
+    border: none;
+    border-top: 1px solid var(--color-line);
+    margin: 0;
   }
 
   .about-description {
-    font-size: var(--fs-md);
+    font-size: var(--fs-sm);
     line-height: var(--lh-normal);
-    max-width: 65ch;
-  }
-
-  .about-facts {
-    display: flex;
-    gap: var(--sp-lg);
-    margin-top: var(--sp-md);
-    flex-wrap: wrap;
-  }
-
-  .about-fact__label {
-    font-family: var(--font-mono);
-    font-size: var(--fs-xs);
-    text-transform: uppercase;
-    color: rgba(16,36,26,0.5);
-  }
-
-  .about-fact__value {
-    font-size: var(--fs-md);
-    font-weight: 700;
-  }
-
-  .about-navigation {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--sp-sm);
-    margin-top: var(--sp-xl);
-    padding-top: var(--sp-lg);
-    border-top: 1px solid var(--color-line);
-  }
-
-  .about-navigation__link {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--sp-xs) var(--sp-md);
-    border: 1px solid var(--color-ridge-green);
-    border-radius: var(--radius-sm);
-    color: var(--color-ridge-green);
-    font-family: var(--font-mono);
-    font-size: var(--fs-xs);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    transition:
-      background var(--dur-fast) var(--ease-standard),
-      color var(--dur-fast) var(--ease-standard);
-  }
-
-  .about-navigation__link:hover {
-    background: var(--color-ridge-green);
-    color: var(--color-summit-white);
   }
 `);
 
 export async function aboutView() {
   await viewContainer.render(`
     <div class="container">
-      ${aboutHeader('About Maguje FC')}
+      ${aboutHeader('Club Profile')}
+      ${clubProfileSubNav('general')}
 
       <div
         class="about-overview"
@@ -133,8 +108,12 @@ export async function aboutView() {
       return { cleanup: null };
     }
 
+    const metaParts = [];
+    if (profile.founded_year) metaParts.push(`Founded ${profile.founded_year}`);
+    if (profile.location) metaParts.push(profile.location);
+
     slot.innerHTML = `
-      <div>
+      <div class="about-identity">
         <div class="about-crest">
           ${lazyImage({
             src: profile.crest_url,
@@ -143,64 +122,26 @@ export async function aboutView() {
           })}
         </div>
 
-        <p class="about-description">
-          ${profile.description || ''}
-        </p>
+        <div class="about-club-name">${profile.name || 'Maguje FC'}</div>
 
-        <div class="about-facts">
-          ${
-            profile.founded_year
-              ? `
-                <div>
-                  <div class="about-fact__label">Founded</div>
-                  <div class="about-fact__value">
-                    ${profile.founded_year}
-                  </div>
-                </div>
-              `
-              : ''
-          }
+        ${
+          metaParts.length
+            ? `<div class="about-meta-line">${metaParts.join(' · ')}</div>`
+            : ''
+        }
 
-          ${
-            profile.home_ground
-              ? `
-                <div>
-                  <div class="about-fact__label">Home Ground</div>
-                  <div class="about-fact__value">
-                    ${profile.home_ground}
-                  </div>
-                </div>
-              `
-              : ''
-          }
-        </div>
-
-        <nav
-          class="about-navigation"
-          aria-label="More about Maguje FC"
-        >
-          <a
-            href="/about/history"
-            class="about-navigation__link"
-          >
-            History
-          </a>
-
-          <a
-            href="/about/vision-mission"
-            class="about-navigation__link"
-          >
-            Vision & Mission
-          </a>
-
-          <a
-            href="/about/honours"
-            class="about-navigation__link"
-          >
-            Honours
-          </a>
-        </nav>
+        ${
+          profile.home_ground
+            ? `<div class="about-ground-line">Home ground: <strong>${profile.home_ground}</strong></div>`
+            : ''
+        }
       </div>
+
+      <hr class="about-divider">
+
+      <p class="about-description">
+        ${profile.description || ''}
+      </p>
 
       <div>
         ${contactRows(contacts || [])}
