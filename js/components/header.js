@@ -120,6 +120,15 @@ class Header {
           </ul>
         </nav>
 
+        <a
+          href="/search"
+          class="header__search-btn"
+          data-path="/search"
+          aria-label="Search"
+        >
+          <span aria-hidden="true">🔍</span>
+        </a>
+
         <button
           type="button"
           class="header__menu-btn show-mobile-only"
