@@ -1,13 +1,13 @@
 import { supabase } from '../supabase-client.js';
 import { viewContainer } from '../view-container.js';
 import { states } from '../components/states.js';
-import { aboutSubNav, aboutHeader } from './about-shared.js';
+import { clubProfileSubNav, aboutHeader } from './club-shared.js';
 
 export async function clubHistoryView() {
   await viewContainer.render(`
     <div class="container">
       ${aboutHeader('Club History')}
-      ${aboutSubNav('history')}
+      ${clubProfileSubNav('history')}
       <div style="padding-bottom: var(--sp-2xl); max-width: 68ch;" data-slot="content"><div class="skel skel-block" style="height:200px;"></div></div>
     </div>`);
 
