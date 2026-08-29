@@ -14,7 +14,7 @@ import { matchReportsView } from "./views/match-reports.js";
 import { matchReportDetailsView } from "./views/match-report-details.js";
 import { matchDetailsView } from "./views/match-details.js";
 import { liveMatchView } from "./views/live-match.js";
-import { teamView } from "./views/team.js";
+import { teamView as playersView } from "./views/team.js";
 import { playerProfileView } from "./views/player-profile.js";
 import { headToHeadIndexView } from "./views/head-to-head-index.js";
 import { headToHeadDetailView } from "./views/head-to-head-detail.js";
@@ -26,7 +26,7 @@ import { competitionStandingsView } from "./views/competition-standings.js";
 import { competitionFixturesView } from "./views/competition-fixtures.js";
 import { competitionResultsView } from "./views/competition-results.js";
 import { competitionPlayerStatisticsView } from "./views/competition-player-statistics.js";
-import { aboutView } from "./views/about.js";
+import { aboutView as clubProfileGeneralView } from "./views/about.js";
 import { clubHistoryView } from "./views/club-history.js";
 import { visionMissionView } from "./views/vision-mission.js";
 import { clubOfficialsView } from "./views/club-officials.js";
@@ -41,7 +41,7 @@ import { searchView } from "./views/search.js";
 import { privacyView } from "./views/privacy.js";
 import { termsView } from "./views/terms.js";
 import { notFoundView } from "./views/not-found.js";
-import { developerView } from "./views/developer.js";   // ← ADD
+import { developerView } from "./views/developer.js";
 import { developerProfileView as dashDeveloperProfileView } from "./dashboard/views/developer-profile.js";
 
 // ---------------------------------------------------------------
@@ -89,7 +89,6 @@ async function standingsView() {
   let activeCompId = null;
 
   try {
-    // Fetch all competitions
     const { data: comps, error: compsErr } = await supabase
       .from("competitions")
       .select("id, name")
@@ -103,7 +102,6 @@ async function standingsView() {
       return { cleanup: null };
     }
 
-    // If multiple competitions, show filter; default to first competition
     if (competitions.length > 1) {
       activeCompId = competitions[0].id;
       filterSlot.innerHTML = `
@@ -182,8 +180,6 @@ async function boot() {
     DASH_BASE_PATH,
   );
 
-  // Skip the club-crest intro animation when landing directly on a
-  // dashboard route — it's public-site branding, not relevant there.
   if (!startingOnDashboard) crestLoader.show();
 
   header.mount();
@@ -195,15 +191,15 @@ async function boot() {
     .add("/news/:slug", withMobileGate(newsDetailsView))
     .add("/fixtures", withMobileGate(fixturesView))
     .add("/results", withMobileGate(resultsView))
+    .add("/results/head-to-head", withMobileGate(headToHeadIndexView))
+    .add("/results/head-to-head/:teamId", withMobileGate(headToHeadDetailView))
     .add("/match-reports", withMobileGate(matchReportsView))
     .add("/match-reports/:slug", withMobileGate(matchReportDetailsView))
     .add("/matches/:slug", withMobileGate(matchDetailsView))
     .add("/live", withMobileGate(liveMatchView))
     .add("/standings", withMobileGate(standingsView))
-    .add("/team", withMobileGate(teamView))
-    .add("/team/players/:slug", withMobileGate(playerProfileView))
-    .add("/team/head-to-head", withMobileGate(headToHeadIndexView))
-    .add("/team/head-to-head/:teamId", withMobileGate(headToHeadDetailView))
+    .add("/players", withMobileGate(playersView))
+    .add("/players/:slug", withMobileGate(playerProfileView))
     .add("/gallery", withMobileGate(galleryView))
     .add("/gallery/:slug", withMobileGate(galleryDetailsView))
     .add("/competitions", withMobileGate(competitionsView))
@@ -215,11 +211,14 @@ async function boot() {
       "/competitions/:slug/player-statistics",
       withMobileGate(competitionPlayerStatisticsView),
     )
-    .add("/about", withMobileGate(aboutView))
-    .add("/about/history", withMobileGate(clubHistoryView))
-    .add("/about/vision-mission", withMobileGate(visionMissionView))
-    .add("/about/officials", withMobileGate(clubOfficialsView))
-    .add("/about/honours", withMobileGate(clubHonoursView))
+    .add("/club-profile", withMobileGate(clubProfileGeneralView))
+    .add("/club-profile/mission-vision", withMobileGate(visionMissionView))
+    .add("/club-profile/history", withMobileGate(clubHistoryView))
+    // Temporary: bare /club-records points at Honours content until
+    // Pass 4 (#7) builds the dedicated All-Time Stats page.
+    .add("/club-records", withMobileGate(clubHonoursView))
+    .add("/club-records/honours", withMobileGate(clubHonoursView))
+    .add("/officials", withMobileGate(clubOfficialsView))
     .add("/community", withMobileGate(communityView))
     .add("/community/:slug", withMobileGate(activityDetailsView))
     .add("/events", withMobileGate(eventsView))
@@ -248,15 +247,10 @@ async function boot() {
     .add(`${DASH_BASE_PATH}/results`, dashResultsView)
     .add(`${DASH_BASE_PATH}/live-match`, dashLiveMatchView)
     .add(`${DASH_BASE_PATH}/content`, dashContentDashboardView)
-    .add("/developer", withMobileGate(developerView))   // ← ADD THIS
+    .add("/developer", withMobileGate(developerView))
     .add(`${DASH_BASE_PATH}/developer-profile`, dashDeveloperProfileView)
     .notFound(notFoundView);
 
-  // Toggle which shell is visible: public chrome (header/#app/footer)
-  // vs. dashboard chrome (#dashboard-shell). Each dashboard view still
-  // mounts/unmounts the sidebar itself via requireAdmin()/sidebar.js —
-  // this just handles the outer chrome switch + body-level layout mode,
-  // which the dashboard views have no reason to know about.
   document.addEventListener("route:after", (e) => {
     const onDashboard = e.detail.path.startsWith(DASH_BASE_PATH);
     document.body.classList.toggle("dashboard-mode", onDashboard);
