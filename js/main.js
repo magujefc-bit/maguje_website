@@ -217,7 +217,6 @@ async function boot() {
     .add("/club-profile/history", withMobileGate(clubHistoryView))
     // Temporary: bare /club-records points at Honours content until
     // Pass 4 (#7) builds the dedicated All-Time Stats page.
-    .add("/club-records", withMobileGate(clubHonoursView))
     .add("/club-records", withMobileGate(clubAllTimeStatsView))
     .add("/officials", withMobileGate(clubOfficialsView))
     .add("/community", withMobileGate(communityView))
