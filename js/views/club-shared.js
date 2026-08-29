@@ -1,6 +1,6 @@
 import { injectStyle } from '../utils/inject-style.js';
 
-injectStyle('about-shared', `
+injectStyle('club-shared', `
   .about-header {
     padding-block: var(--sp-lg) var(--sp-sm);
   }
@@ -32,34 +32,64 @@ injectStyle('about-shared', `
   }
 `);
 
-export function aboutSubNav(activeTab) {
+export function clubProfileSubNav(activeTab) {
   const tabs = [
     {
-      id: 'overview',
-      label: 'Overview',
-      path: '/about'
+      id: 'general',
+      label: 'General',
+      path: '/club-profile'
+    },
+    {
+      id: 'mission-vision',
+      label: 'Mission & Vision',
+      path: '/club-profile/mission-vision'
     },
     {
       id: 'history',
       label: 'History',
-      path: '/about/history'
-    },
-    {
-      id: 'vision-mission',
-      label: 'Vision & Mission',
-      path: '/about/vision-mission'
-    },
-    {
-      id: 'honours',
-      label: 'Honours',
-      path: '/about/honours'
+      path: '/club-profile/history'
     },
   ];
 
   return `
     <nav
       class="about-subnav"
-      aria-label="About sections"
+      aria-label="Club Profile sections"
+    >
+      ${tabs.map(t => `
+        <a
+          href="${t.path}"
+          class="about-subnav__link ${
+            t.id === activeTab
+              ? 'about-subnav__link--active'
+              : ''
+          }"
+        >
+          ${t.label}
+        </a>
+      `).join('')}
+    </nav>
+  `;
+}
+
+export function clubRecordsSubNav(activeTab) {
+  const tabs = [
+    {
+      id: 'all-time-stats',
+      label: 'All-Time Stats',
+      path: '/club-records'
+    },
+    {
+      id: 'honours',
+      label: 'Honours / Achievements',
+      path: '/club-records/honours'
+    },
+  ];
+
+  return `
+    <nav
+      class="about-subnav"
+      aria-label="Club All-Time Records sections"
     >
       ${tabs.map(t => `
         <a
