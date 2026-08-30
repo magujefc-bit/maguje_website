@@ -13,7 +13,8 @@ injectStyle('match-center-view', `
 
   .our-club-row { background: #eaf6ee; border-radius: 8px; padding: 0.7rem 0.9rem; margin-bottom: 0.6rem; font-size: 0.88rem; font-weight: 600; color: #109b45; }
 
-  .filter-popover { position: absolute; top: 100%; right: 0; margin-top: 6px; background: #fff; border: 1px solid #d3ded6; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 1rem; width: 240px; z-index: 20; }
+.filter-popover { position: absolute; top: 100%; left: 0; margin-top: 6px; background: #fff; border: 1px solid #d3ded6; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 1rem; width: 240px; max-width: calc(100vw - 32px); z-index: 20; }
+
   .filter-popover .radio-line { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; font-size: 0.85rem; }
   .filter-popover .radio-line input { width: auto; }
   .filter-popover select { width: 100%; margin-top: 0.4rem; padding: 0.5rem; border: 1px solid #d3ded6; border-radius: 6px; }
