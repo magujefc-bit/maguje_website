@@ -91,7 +91,7 @@ export function spotlightCard({
   meta,
 }) {
   return `
-    <a href="/team/players/${playerSlug}" class="spotlight-card">
+    <a href="/players/${playerSlug}" class="spotlight-card">
       <span class="spotlight-card__badge">${label}</span>
       <div class="spotlight-card__top">
         <div class="spotlight-card__photo">
