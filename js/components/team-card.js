@@ -19,7 +19,7 @@ injectStyle('team-card', `
 `);
 
 export function teamCard(team) {
-  return `<a href="/team" class="team-card"><div class="team-card__crest">${lazyImage({ src: team.crestUrl, alt: team.name, aspect: 'square' })}</div><span class="team-card__name">${team.name}</span></a>`;
+  return `<a href="/players" class="team-card"><div class="team-card__crest">${lazyImage({ src: team.crestUrl, alt: team.name, aspect: 'square' })}</div><span class="team-card__name">${team.name}</span></a>`;
 }
 
 export function teamHeader(team) {
