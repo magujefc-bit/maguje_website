@@ -36,15 +36,31 @@ export async function clubRecordsView() {
   let allTeams = [];
 
   viewContainer.render(`
-    ${pageHeader('Club Records', 'Club honours and all-time statistical records.')}
+    ${pageHeader('Club All-Time Records', 'All-time statistical records, honours, and achievements.')}
 
     <div class="tabs">
-      <button class="tab-btn active" data-tab="honours">Honours</button>
-      <button class="tab-btn" data-tab="records">All-Time Records</button>
+      <button class="tab-btn active" data-tab="stats">All-Time Stats</button>
+      <button class="tab-btn" data-tab="honours">Honours</button>
+    </div>
+
+    <!-- ===================== ALL-TIME STATS TAB ===================== -->
+    <div class="tab-panel active" id="tab-stats">
+      <p id="records-load-status" class="save-status"></p>
+
+      <div class="record-grid">
+        <div class="record-box"><h3>Top Scorers</h3><div id="top-scorers-list"></div></div>
+        <div class="record-box"><h3>Most Appearances</h3><div id="top-appearances-list"></div></div>
+        <div class="record-box"><h3>Most Assists</h3><div id="top-assists-list"></div></div>
+        <div class="record-box"><h3>Discipline (Cards)</h3><div id="top-discipline-list"></div></div>
+      </div>
+
+      <div class="record-box biggest-win-box" id="biggest-win-box">
+        <div class="empty-msg">Loading biggest win…</div>
+      </div>
     </div>
 
     <!-- ===================== HONOURS TAB ===================== -->
-    <div class="tab-panel active" id="tab-honours">
+    <div class="tab-panel" id="tab-honours">
       <div class="card">
         <h2>Add Honour</h2>
         <div class="field-grid">
@@ -78,22 +94,6 @@ export async function clubRecordsView() {
         <h2>Honours & Achievements</h2>
         <p id="honours-load-status" class="save-status"></p>
         <div id="honours-list"></div>
-      </div>
-    </div>
-
-    <!-- ===================== ALL-TIME RECORDS TAB ===================== -->
-    <div class="tab-panel" id="tab-records">
-      <p id="records-load-status" class="save-status"></p>
-
-      <div class="record-grid">
-        <div class="record-box"><h3>Top Scorers</h3><div id="top-scorers-list"></div></div>
-        <div class="record-box"><h3>Most Appearances</h3><div id="top-appearances-list"></div></div>
-        <div class="record-box"><h3>Most Assists</h3><div id="top-assists-list"></div></div>
-        <div class="record-box"><h3>Discipline (Cards)</h3><div id="top-discipline-list"></div></div>
-      </div>
-
-      <div class="record-box biggest-win-box" id="biggest-win-box">
-        <div class="empty-msg">Loading biggest win…</div>
       </div>
     </div>
   `);
@@ -248,7 +248,7 @@ export async function clubRecordsView() {
     loadHonours();
   });
 
-  // ================= ALL-TIME RECORDS =================
+  // ================= ALL-TIME STATS =================
   async function loadAllTimeRecords() {
     const statusEl = document.getElementById('records-load-status');
     statusEl.textContent = 'Loading...';
@@ -275,7 +275,7 @@ export async function clubRecordsView() {
 
     container.innerHTML = sorted.map(p => `
       <div class="leader-row">
-        <span class="leader-name">${escapeHtml(p.field_name || p.full_name)}</span>
+        <span class="leader-name">${escapeHtml(p.player_name || 'Unknown player')}</span>
         <span class="leader-value">${p[field]}</span>
       </div>
     `).join('');
@@ -296,7 +296,7 @@ export async function clubRecordsView() {
 
     container.innerHTML = withCards.map(p => `
       <div class="leader-row">
-        <span class="leader-name">${escapeHtml(p.field_name || p.full_name)}</span>
+        <span class="leader-name">${escapeHtml(p.player_name || 'Unknown player')}</span>
         <span class="leader-value">🟨${p.yellow_cards} 🟥${p.red_cards}</span>
       </div>
     `).join('');
@@ -361,4 +361,4 @@ export async function clubRecordsView() {
   });
 
   return { cleanup: null };
-}
+      }
