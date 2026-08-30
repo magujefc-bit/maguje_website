@@ -5,6 +5,11 @@ import { injectStyle } from '../utils/inject-style.js';
 import { supabaseClient } from '../supabase-client-esm.js';
 
 injectStyle('club-profile-view', `
+  .tabs { display: flex; gap: 0.4rem; margin-bottom: 1.2rem; border-bottom: 2px solid #e2ece5; }
+  .tab-btn { background: none; border: none; padding: 0.7rem 1.1rem; font-size: 0.9rem; font-weight: 600; color: #777; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+  .tab-btn.active { color: #109b45; border-bottom-color: #109b45; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
   .item-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0; border-bottom: 1px solid #f0f4f1; }
   .item-row:last-child { border-bottom: none; }
   .item-row .item-type { width: 130px; font-weight: 600; color: #333; font-size: 0.85rem; }
@@ -14,6 +19,7 @@ injectStyle('club-profile-view', `
   .add-form input { flex: 1; min-width: 140px; }
   .edit-row { display: flex; gap: 0.6rem; flex: 1; flex-wrap: wrap; }
   .edit-row input { flex: 1; min-width: 120px; }
+  .save-bar { display: flex; align-items: center; gap: 0.8rem; margin: 1rem 0 1.5rem; }
 `);
 
 export async function clubProfileView() {
@@ -21,94 +27,128 @@ export async function clubProfileView() {
   if (!admin) return { cleanup: null };
 
   viewContainer.render(`
-    ${pageHeader('Club Profile & Contacts', "Manage the club's public profile, contact details, and social links.")}
+    ${pageHeader('Club Profile', "Manage the club's public profile, contact details, and social links.")}
 
-    <!-- PROFILE -->
-    <div class="card">
-      <h2>Club Profile</h2>
-      <div class="field-grid">
-        <div>
-          <label for="f-name">Club Name</label>
-          <input type="text" id="f-name">
-        </div>
-        <div>
-          <label for="f-founded">Founded Year</label>
-          <input type="number" id="f-founded" min="1800" max="2100">
-        </div>
-      </div>
-      <div class="field-grid">
-        <div>
-          <label for="f-crest-file">Club Crest</label>
-          <div style="display:flex; align-items:center; gap:0.8rem;">
-            <img id="crest-preview" src="" alt="No crest uploaded"
-                 style="width:64px; height:64px; object-fit:cover; border-radius:8px; background:#f0f4f1; display:none;">
-            <input type="file" id="f-crest-file" accept="image/png, image/jpeg, image/webp">
-          </div>
-          <span id="crest-upload-status" class="save-status"></span>
-        </div>
-        <div>
-          <label for="f-ground">Home Ground</label>
-          <input type="text" id="f-ground">
-        </div>
-      </div>
-      <div class="field-grid full">
-        <div>
-          <label for="f-location">Location</label>
-          <input type="text" id="f-location">
-        </div>
-      </div>
-      <div class="field-grid full">
-        <div>
-          <label for="f-description">Description</label>
-          <textarea id="f-description"></textarea>
-        </div>
-      </div>
-      <div class="field-grid full">
-        <div>
-          <label for="f-vision">Vision</label>
-          <textarea id="f-vision" placeholder="Shown on the public site's Vision & Mission page"></textarea>
-        </div>
-      </div>
-      <div class="field-grid full">
-        <div>
-          <label for="f-mission">Mission</label>
-          <textarea id="f-mission" placeholder="Shown on the public site's Vision & Mission page"></textarea>
-        </div>
-      </div>
-      <div class="field-grid full">
-        <div>
-          <label for="f-history">Club History</label>
-          <textarea id="f-history" placeholder="Shown on the public site's Club History page"></textarea>
-        </div>
-      </div>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="general">General</button>
+      <button class="tab-btn" data-tab="mission-vision">Mission &amp; Vision</button>
+      <button class="tab-btn" data-tab="history">History</button>
+    </div>
+
+    <!-- Shared save bar — one save covers every tab's fields, since
+         they all live in the same club_profile row. -->
+    <div class="save-bar">
       <button id="save-profile-btn" class="btn-primary">Save Profile</button>
       <span id="profile-save-status" class="save-status"></span>
     </div>
 
-    <!-- CONTACTS -->
-    <div class="card">
-      <h2>Contacts</h2>
-      <div id="contacts-list"></div>
-      <div class="add-form">
-        <input type="text" id="new-contact-type" placeholder="Type (e.g. Phone, Email, Address)">
-        <input type="text" id="new-contact-value" placeholder="Value">
-        <button id="add-contact-btn" class="btn-secondary">Add Contact</button>
+    <!-- ===================== GENERAL TAB ===================== -->
+    <div class="tab-panel active" id="tab-general">
+      <div class="card">
+        <h2>General</h2>
+        <div class="field-grid">
+          <div>
+            <label for="f-name">Club Name</label>
+            <input type="text" id="f-name">
+          </div>
+          <div>
+            <label for="f-founded">Founded Year</label>
+            <input type="number" id="f-founded" min="1800" max="2100">
+          </div>
+        </div>
+        <div class="field-grid">
+          <div>
+            <label for="f-crest-file">Club Crest</label>
+            <div style="display:flex; align-items:center; gap:0.8rem;">
+              <img id="crest-preview" src="" alt="No crest uploaded"
+                   style="width:64px; height:64px; object-fit:cover; border-radius:8px; background:#f0f4f1; display:none;">
+              <input type="file" id="f-crest-file" accept="image/png, image/jpeg, image/webp">
+            </div>
+            <span id="crest-upload-status" class="save-status"></span>
+          </div>
+          <div>
+            <label for="f-ground">Home Ground</label>
+            <input type="text" id="f-ground">
+          </div>
+        </div>
+        <div class="field-grid full">
+          <div>
+            <label for="f-location">Location</label>
+            <input type="text" id="f-location">
+          </div>
+        </div>
+        <div class="field-grid full">
+          <div>
+            <label for="f-description">Description</label>
+            <textarea id="f-description"></textarea>
+          </div>
+        </div>
       </div>
-      <span id="contacts-status" class="save-status"></span>
+
+      <div class="card">
+        <h2>Contacts</h2>
+        <div id="contacts-list"></div>
+        <div class="add-form">
+          <input type="text" id="new-contact-type" placeholder="Type (e.g. Phone, Email, Address)">
+          <input type="text" id="new-contact-value" placeholder="Value">
+          <button id="add-contact-btn" class="btn-secondary">Add Contact</button>
+        </div>
+        <span id="contacts-status" class="save-status"></span>
+      </div>
+
+      <div class="card">
+        <h2>Social Links</h2>
+        <div id="social-list"></div>
+        <div class="add-form">
+          <input type="text" id="new-social-platform" placeholder="Platform (e.g. Instagram, X, Facebook)">
+          <input type="url" id="new-social-url" placeholder="https://...">
+          <button id="add-social-btn" class="btn-secondary">Add Link</button>
+        </div>
+        <span id="social-status" class="save-status"></span>
+      </div>
     </div>
 
-    <!-- SOCIAL LINKS -->
-    <div class="card">
-      <h2>Social Links</h2>
-      <div id="social-list"></div>
-      <div class="add-form">
-        <input type="text" id="new-social-platform" placeholder="Platform (e.g. Instagram, X, Facebook)">
-        <input type="url" id="new-social-url" placeholder="https://...">
-        <button id="add-social-btn" class="btn-secondary">Add Link</button>
+    <!-- ===================== MISSION & VISION TAB ===================== -->
+    <div class="tab-panel" id="tab-mission-vision">
+      <div class="card">
+        <h2>Mission &amp; Vision</h2>
+        <div class="field-grid full">
+          <div>
+            <label for="f-vision">Vision</label>
+            <textarea id="f-vision" placeholder="Shown on the public site's Mission & Vision page"></textarea>
+          </div>
+        </div>
+        <div class="field-grid full">
+          <div>
+            <label for="f-mission">Mission</label>
+            <textarea id="f-mission" placeholder="Shown on the public site's Mission & Vision page"></textarea>
+          </div>
+        </div>
       </div>
-      <span id="social-status" class="save-status"></span>
+    </div>
+
+    <!-- ===================== HISTORY TAB ===================== -->
+    <div class="tab-panel" id="tab-history">
+      <div class="card">
+        <h2>Club History</h2>
+        <div class="field-grid full">
+          <div>
+            <label for="f-history">Club History</label>
+            <textarea id="f-history" placeholder="Shown on the public site's Club History page"></textarea>
+          </div>
+        </div>
+      </div>
     </div>
   `);
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+    });
+  });
 
   // ---------- PROFILE ----------
   async function loadProfile() {
@@ -396,4 +436,4 @@ export async function clubProfileView() {
   loadSocialLinks();
 
   return { cleanup: null };
-}
+        }
