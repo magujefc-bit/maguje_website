@@ -1,5 +1,5 @@
 import { viewContainer } from '../view-container.js';
-import { requireAdmin } from '../auth-gate.js';
+import { requireOwner } from '../auth-gate.js';
 import { pageHeader } from '../components/page-header.js';
 import { injectStyle } from '../utils/inject-style.js';
 import { supabaseClient } from '../supabase-client-esm.js';
@@ -21,7 +21,7 @@ injectStyle('developer-profile-view', `
 `);
 
 export async function developerProfileView() {
-  const admin = await requireAdmin(['super_admin']);
+  const admin = await requireOwner();
   if (!admin) return { cleanup: null };
 
   viewContainer.render(`
