@@ -50,5 +50,5 @@ export async function competitionPlayerStatisticsView(params) {
 }
 
 function renderTable(rows) {
-  return `<table class="player-stats-table"><thead><tr><th>Player</th><th>Apps</th><th>Goals</th><th>Assists</th></tr></thead><tbody>${rows.map(r => `<tr><td><a href="/team/players/${r.player.slug}">${r.player.full_name}</a></td><td>${r.appearances ?? 0}</td><td>${r.goals ?? 0}</td><td>${r.assists ?? 0}</td></tr>`).join('')}</tbody></table>`;
+  return `<table class="player-stats-table"><thead><tr><th>Player</th><th>Apps</th><th>Goals</th><th>Assists</th></tr></thead><tbody>${rows.map(r => `<tr><td><a href="/players/${r.player.slug}">${r.player.full_name}</a></td><td>${r.appearances ?? 0}</td><td>${r.goals ?? 0}</td><td>${r.assists ?? 0}</td></tr>`).join('')}</tbody></table>`;
 }
