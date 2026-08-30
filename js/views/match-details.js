@@ -128,7 +128,7 @@ async function renderMatch(root, match, channels) {
       supabase
         .from("match_goals")
         .select(
-          "minute, is_opponent_goal, scorer:players!match_goals_scorer_id_fkey(full_name), assist:players!match_goals_assist_id_fkey(full_name)",
+          "minute, is_opponent_goal, scorer:players!fixture_goals_scorer_id_fkey(full_name), assist:players!fixture_goals_assist_id_fkey(full_name)",
         )
         .eq("match_id", match.id),
       supabase
@@ -138,7 +138,7 @@ async function renderMatch(root, match, channels) {
       supabase
         .from("match_substitutions")
         .select(
-          "minute, player_in:players!match_substitutions_player_in_id_fkey(full_name), player_out:players!match_substitutions_player_out_id_fkey(full_name)",
+          "minute, player_in:players!fixture_substitutions_player_in_id_fkey(full_name), player_out:players!fixture_substitutions_player_out_id_fkey(full_name)",
         )
         .eq("match_id", match.id),
       supabase
@@ -148,6 +148,11 @@ async function renderMatch(root, match, channels) {
         )
         .eq("match_id", match.id),
     ]);
+
+    if (goalsRes.error) console.error("[match-details] goals query failed:", goalsRes.error);
+    if (cardsRes.error) console.error("[match-details] cards query failed:", cardsRes.error);
+    if (subsRes.error) console.error("[match-details] subs query failed:", subsRes.error);
+    if (lineupsRes.error) console.error("[match-details] lineups query failed:", lineupsRes.error);
 
     const events = buildTimeline(
       goalsRes.data || [],
@@ -194,7 +199,9 @@ async function renderMatch(root, match, channels) {
     .on("postgres_changes", { event: "*", schema: "public", table: "match_cards", filter: `match_id=eq.${match.id}` }, loadAndRenderDetails)
     .on("postgres_changes", { event: "*", schema: "public", table: "match_substitutions", filter: `match_id=eq.${match.id}` }, loadAndRenderDetails)
     .on("postgres_changes", { event: "*", schema: "public", table: "match_lineups", filter: `match_id=eq.${match.id}` }, loadAndRenderDetails)
-    .subscribe();
+    .subscribe((status, err) => {
+      console.log("[match-details] realtime channel status:", status, err || "");
+    });
 
   channels.push(detailsChannel);
 
