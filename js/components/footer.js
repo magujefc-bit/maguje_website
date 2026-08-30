@@ -4,10 +4,10 @@ const QUICK_LINKS = [
   { label: "Fixtures", path: "/fixtures" },
   { label: "Results", path: "/results" },
   { label: "Standings", path: "/standings" },
-  { label: "Team", path: "/team" },
-  { label: "Head to Head", path: "/team/head-to-head" },
+  { label: "Players", path: "/players" },
+  { label: "Head to Head", path: "/results/head-to-head" },
   { label: "Gallery", path: "/gallery" },
-  { label: "About", path: "/about" },
+  { label: "Club Profile", path: "/club-profile" },
 ];
 
 const LEGAL_LINKS = [
@@ -18,11 +18,11 @@ const LEGAL_LINKS = [
 ];
 
 const CLUB_LINKS = [
-  { label: "About Maguje FC", path: "/about" },
-  { label: "Club History", path: "/about/history" },
-  { label: "Vision & Mission", path: "/about/vision-mission" },
-  { label: "Officials", path: "/about/officials" },
-  { label: "Honours", path: "/about/honours" },
+  { label: "About Maguje FC", path: "/club-profile" },
+  { label: "Club History", path: "/club-profile/history" },
+  { label: "Vision & Mission", path: "/club-profile/mission-vision" },
+  { label: "Officials", path: "/officials" },
+  { label: "Honours", path: "/club-records/honours" },
   { label: "Join Supporters", path: "/supporters" },
 ];
 
