@@ -5,7 +5,7 @@ import { states } from "../components/states.js";
 import { matchHeader } from "../components/match-header.js";
 import { matchTimeline } from "../components/match-timeline.js";
 import { startingXIList, substituteList } from "../components/lineup.js";
-import { tabs, shareBar, bindShareBar } from "../components/controls.js";
+import { shareBar, bindShareBar } from "../components/controls.js";
 import { observeLazyImages } from "../components/lazy-image.js";
 import { injectStyle } from "../utils/inject-style.js";
 import { combineDateTime } from "./home.js";
@@ -14,7 +14,9 @@ injectStyle(
   "match-details-view",
   `
   .match-details-main { padding-block: var(--sp-lg); }
-  .match-details-content { padding-top: var(--sp-md); }
+  .match-details-content { padding-top: var(--sp-md); display: flex; flex-direction: column; gap: var(--sp-lg); }
+  .match-details-panel { }
+  .match-details-panel__title { font-size: var(--fs-lg); margin-bottom: var(--sp-sm); }
   .match-details-sidebar { display: flex; flex-direction: column; gap: var(--sp-md); }
   .sidebar-card { background: var(--color-summit-white); border: 1px solid var(--color-line); border-radius: var(--radius-md); padding: var(--sp-sm); }
   .sidebar-card__title { font-family: var(--font-mono); font-size: var(--fs-xs); text-transform: uppercase; color: rgba(16,36,26,0.5); margin-bottom: var(--sp-xs); }
@@ -26,6 +28,7 @@ export async function matchDetailsView(params) {
   const { slug } = params;
   await viewContainer.renderSkeleton(skeletons.matchDetails());
   const root = document.querySelector("#app");
+  const channels = [];
 
   try {
     const { data: match, error } = await supabase
@@ -45,10 +48,14 @@ export async function matchDetailsView(params) {
       return { cleanup: null };
     }
 
-    // Attach opponent record if possible
     const [attached] = await supabase.attachOpponents([match]);
-    await renderMatch(root, attached || match);
-    return { cleanup: null };
+    await renderMatch(root, attached || match, channels);
+
+    return {
+      cleanup: () => {
+        channels.forEach((ch) => supabase.removeChannel(ch));
+      },
+    };
   } catch (err) {
     console.error("[match-details] load failed:", err);
     viewContainer.renderError("Could not load this match.", () =>
@@ -58,92 +65,138 @@ export async function matchDetailsView(params) {
   }
 }
 
-async function renderMatch(root, match) {
-  // Live matches get the same real-time scoreboard used in the
-  // dashboard (<fab-scoreboard>, already loaded site-wide via
-  // index.html) instead of the static header. It handles its own
-  // data fetching and Supabase realtime subscriptions internally —
-  // nothing further to wire up here.
+async function renderMatch(root, match, channels) {
   const isLive =
     window.ScoreboardCore &&
     window.ScoreboardCore.isLivePhase(match.live_state);
 
-  const headerHtml = isLive
-    ? `<div class="match-details-scoreboard-wrap"><fab-scoreboard match-id="${match.id}"></fab-scoreboard></div>`
-    : matchHeader({
-        status: match.is_live ? "live" : match.status,
-        kickoffAt: combineDateTime(match.match_date, match.match_time),
-        venue: match.venue,
-        homeScore: match.our_score,
-        awayScore: match.opponent_score,
-        competition: match.competition,
-        homeTeam: { name: "Maguje FC", crestUrl: "/assets/crest.svg" },
-        awayTeam: {
-          name: match.opponent?.name || "TBD",
-          crestUrl: match.opponent?.logo_url,
-        },
-      });
-
   await viewContainer.render(`
     <div class="container match-details-main">
-      <div data-slot="header">${headerHtml}</div>
+      <div data-slot="header"></div>
       <div class="layout-split match-details-content">
-        <div><div data-slot="tabs"></div><div data-slot="tab-panel"></div></div>
+        <div>
+          <div class="match-details-panel">
+            <h2 class="match-details-panel__title">Match Events</h2>
+            <div data-slot="events-panel"></div>
+          </div>
+          <div class="match-details-panel" style="margin-top: var(--sp-lg);">
+            <h2 class="match-details-panel__title">Lineups</h2>
+            <div data-slot="lineups-panel"></div>
+          </div>
+        </div>
         <div class="match-details-sidebar" data-slot="sidebar"></div>
       </div>
     </div>`);
 
-  observeLazyImages(root.querySelector('[data-slot="header"]'));
+  const headerSlot = root.querySelector('[data-slot="header"]');
 
-  const [goalsRes, cardsRes, subsRes, lineupsRes] = await Promise.all([
-    supabase
-      .from("match_goals")
-      .select(
-        "minute, is_opponent_goal, scorer:players!match_goals_scorer_id_fkey(full_name), assist:players!match_goals_assist_id_fkey(full_name)",
-      )
-      .eq("match_id", match.id),
-    supabase
-      .from("match_cards")
-      .select("minute, card_type, player:players(full_name)")
-      .eq("match_id", match.id),
-    supabase
-      .from("match_substitutions")
-      .select(
-        "minute, player_in:players!match_substitutions_player_in_id_fkey(full_name), player_out:players!match_substitutions_player_out_id_fkey(full_name)",
-      )
-      .eq("match_id", match.id),
-    supabase
-      .from("match_lineups")
-      .select(
-        "is_starter, position_played, player:players(full_name, jersey_number)",
-      )
-      .eq("match_id", match.id),
-  ]);
-
-  const events = buildTimeline(
-    goalsRes.data || [],
-    cardsRes.data || [],
-    subsRes.data || [],
-  );
-  const lineups = lineupsRes.data || [];
-
-  const tabsSlot = root.querySelector('[data-slot="tabs"]');
-  const panelSlot = root.querySelector('[data-slot="tab-panel"]');
-  tabsSlot.innerHTML = tabs([
-    { id: "summary", label: "Summary", active: true },
-    { id: "lineups", label: "Lineups", active: false },
-  ]);
-  renderTabPanel(panelSlot, "summary", { events, lineups });
-
-  tabsSlot.querySelectorAll(".tab").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      tabsSlot
-        .querySelectorAll(".tab")
-        .forEach((t) => t.classList.remove("tab--active"));
-      btn.classList.add("tab--active");
-      renderTabPanel(panelSlot, btn.dataset.tabId, { events, lineups });
+  if (isLive) {
+    const scoreboard = document.createElement("fab-scoreboard");
+    // Explicitly inject the SAME client instance this page already
+    // uses, instead of letting the component fall back to whatever
+    // window.supabaseClient happens to be (which, on the public
+    // site, is actually a separate dashboard client instance —
+    // that mismatch was the root cause of updates needing a refresh).
+    scoreboard.supabaseClient = supabase;
+    scoreboard.setAttribute("match-id", match.id);
+    const wrap = document.createElement("div");
+    wrap.className = "match-details-scoreboard-wrap";
+    wrap.appendChild(scoreboard);
+    headerSlot.appendChild(wrap);
+  } else {
+    headerSlot.innerHTML = matchHeader({
+      status: match.is_live ? "live" : match.status,
+      kickoffAt: combineDateTime(match.match_date, match.match_time),
+      venue: match.venue,
+      homeScore: match.our_score,
+      awayScore: match.opponent_score,
+      competition: match.competition,
+      homeTeam: { name: "Maguje FC", crestUrl: "/assets/crest.svg" },
+      awayTeam: {
+        name: match.opponent?.name || "TBD",
+        crestUrl: match.opponent?.logo_url,
+      },
     });
-  });
+    observeLazyImages(headerSlot);
+  }
+
+  const eventsSlot = root.querySelector('[data-slot="events-panel"]');
+  const lineupsSlot = root.querySelector('[data-slot="lineups-panel"]');
+
+  async function loadAndRenderDetails() {
+    const [goalsRes, cardsRes, subsRes, lineupsRes] = await Promise.all([
+      supabase
+        .from("match_goals")
+        .select(
+          "minute, is_opponent_goal, scorer:players!match_goals_scorer_id_fkey(full_name), assist:players!match_goals_assist_id_fkey(full_name)",
+        )
+        .eq("match_id", match.id),
+      supabase
+        .from("match_cards")
+        .select("minute, card_type, player:players(full_name)")
+        .eq("match_id", match.id),
+      supabase
+        .from("match_substitutions")
+        .select(
+          "minute, player_in:players!match_substitutions_player_in_id_fkey(full_name), player_out:players!match_substitutions_player_out_id_fkey(full_name)",
+        )
+        .eq("match_id", match.id),
+      supabase
+        .from("match_lineups")
+        .select(
+          "is_starter, position_played, player:players(full_name, jersey_number)",
+        )
+        .eq("match_id", match.id),
+    ]);
+
+    const events = buildTimeline(
+      goalsRes.data || [],
+      cardsRes.data || [],
+      subsRes.data || [],
+    );
+    const lineups = lineupsRes.data || [];
+
+    eventsSlot.innerHTML = events.length
+      ? matchTimeline(events)
+      : states.empty({ message: "No match events yet." });
+
+    if (!lineups.length) {
+      lineupsSlot.innerHTML = states.empty({
+        message: "Lineup not yet announced.",
+      });
+    } else {
+      const starting = lineups
+        .filter((l) => l.is_starter)
+        .map((l) => ({
+          number: l.player.jersey_number ?? "–",
+          name: l.player.full_name,
+          position: l.position_played,
+        }));
+      const subs = lineups
+        .filter((l) => !l.is_starter)
+        .map((l) => ({
+          number: l.player.jersey_number ?? "–",
+          name: l.player.full_name,
+          position: l.position_played,
+        }));
+      lineupsSlot.innerHTML = startingXIList(starting) + substituteList(subs);
+    }
+  }
+
+  await loadAndRenderDetails();
+
+  // Match Events and Lineups now stay live too — any goal, card,
+  // substitution, or lineup change re-fetches and re-renders both
+  // panels immediately, no refresh needed.
+  const detailsChannel = supabase
+    .channel(`match-details-${match.id}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "match_goals", filter: `match_id=eq.${match.id}` }, loadAndRenderDetails)
+    .on("postgres_changes", { event: "*", schema: "public", table: "match_cards", filter: `match_id=eq.${match.id}` }, loadAndRenderDetails)
+    .on("postgres_changes", { event: "*", schema: "public", table: "match_substitutions", filter: `match_id=eq.${match.id}` }, loadAndRenderDetails)
+    .on("postgres_changes", { event: "*", schema: "public", table: "match_lineups", filter: `match_id=eq.${match.id}` }, loadAndRenderDetails)
+    .subscribe();
+
+  channels.push(detailsChannel);
 
   const shareUrl = window.location.origin + "/matches/" + match.slug;
   const shareTitle = `Maguje FC vs ${match.opponent?.name || "TBD"}`;
@@ -155,36 +208,6 @@ async function renderMatch(root, match) {
       `;
 
   bindShareBar(root.querySelector('[data-slot="sidebar"]'));
-}
-
-function renderTabPanel(panelSlot, tabId, { events, lineups }) {
-  if (tabId === "summary") {
-    panelSlot.innerHTML = events.length
-      ? matchTimeline(events)
-      : states.empty({ message: "No match events yet." });
-  } else if (tabId === "lineups") {
-    if (!lineups.length) {
-      panelSlot.innerHTML = states.empty({
-        message: "Lineup not yet announced.",
-      });
-      return;
-    }
-    const starting = lineups
-      .filter((l) => l.is_starter)
-      .map((l) => ({
-        number: l.player.jersey_number ?? "–",
-        name: l.player.full_name,
-        position: l.position_played,
-      }));
-    const subs = lineups
-      .filter((l) => !l.is_starter)
-      .map((l) => ({
-        number: l.player.jersey_number ?? "–",
-        name: l.player.full_name,
-        position: l.position_played,
-      }));
-    panelSlot.innerHTML = startingXIList(starting) + substituteList(subs);
-  }
 }
 
 function buildTimeline(goals, cards, subs) {
