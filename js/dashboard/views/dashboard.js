@@ -25,7 +25,7 @@ const ROLE_CONFIG = {
       { title: 'Managers', desc: 'Invite, deactivate, or reactivate admin accounts.', href: dashPath('/managers'), icon: '👥' },
       { title: 'Auth Records', desc: 'Check login/auth history for all accounts.', href: dashPath('/auth-records'), icon: '🔑' },
       { title: 'System Log', desc: 'Review recent admin activity across the system.', href: dashPath('/system-log'), icon: '📋' },
-      {title: 'Developer page', desc: 'manage what is displayed on your developer profile.', href: dashPath('/developer-profile'), icon: '💻'},
+      {title: 'Developer page', desc: 'Strictlyfor MAGUJEFC developer.', href: dashPath('/developer-profile'), icon: '💻'},
       
     ],
   },
