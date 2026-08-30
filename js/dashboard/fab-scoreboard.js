@@ -217,7 +217,9 @@ const TEMPLATE = `
         .on("postgres_changes", { event: "*", schema: "public", table: "match_cards", filter: `match_id=eq.${this._matchId}` }, () => this._reloadAndRender())
         .on("postgres_changes", { event: "*", schema: "public", table: "match_substitutions", filter: `match_id=eq.${this._matchId}` }, () => this._reloadAndRender())
         .on("postgres_changes", { event: "*", schema: "public", table: "match_lineups", filter: `match_id=eq.${this._matchId}` }, () => this._reloadAndRender())
-        .subscribe();
+        .subscribe((status, err) => {
+          console.log("[fab-scoreboard] realtime channel status:", status, err || "");
+        });
     }
 
     async _reloadAndRender() {
