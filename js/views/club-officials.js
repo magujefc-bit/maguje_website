@@ -1,7 +1,7 @@
 import { supabase } from '../supabase-client.js';
 import { viewContainer } from '../view-container.js';
 import { states } from '../components/states.js';
-import { aboutHeader } from './about-shared.js';
+import { aboutHeader } from './club-shared.js';
 import { observeLazyImages } from '../components/lazy-image.js';
 
 export async function clubOfficialsView() {
