@@ -23,7 +23,7 @@
   function = "og-meta"
 
 [[edge_functions]]
-  path = "/team/players/*"
+  path = "/players/*"
   function = "og-meta"
 
 [[edge_functions]]
