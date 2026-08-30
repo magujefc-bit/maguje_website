@@ -86,7 +86,7 @@ injectStyle('player-card', `
 
 export function playerCard(player) {
   return `
-    <a href="/team/players/${player.slug}" class="player-card">
+    <a href="/players/${player.slug}" class="player-card">
 
       <div class="player-card__top">
 
