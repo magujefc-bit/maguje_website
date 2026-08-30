@@ -51,7 +51,7 @@ export async function headToHeadDetailView(params) {
 
     if (!summary) {
       await viewContainer.render(
-        `<div class="container section" style="text-align:center;"><h1 class="text-display-xl">No record found</h1><a href="/team/head-to-head" class="btn btn--primary" style="margin-top: var(--sp-md);">Back to Head to Head</a></div>`,
+        `<div class="container section" style="text-align:center;"><h1 class="text-display-xl">No record found</h1><a href="/results/head-to-head" class="btn btn--primary" style="margin-top: var(--sp-md);">Back to Head to Head</a></div>`,
       );
       return { cleanup: null };
     }
