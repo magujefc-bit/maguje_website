@@ -27,6 +27,8 @@ injectStyle('match-center-view', `
   .squad-table { width: 100%; border-collapse: collapse; }
   .squad-table th { text-align: left; font-size: 0.75rem; color: #888; padding: 0.5rem 0.6rem; border-bottom: 2px solid #f0f4f1; }
   .squad-table td { padding: 0.5rem 0.6rem; border-bottom: 1px solid #f7f9f8; font-size: 0.85rem; }
+
+  .popover-anchor { position: relative; display: inline-block; }
 `);
 
 export async function matchCenterView() {
@@ -38,7 +40,6 @@ export async function matchCenterView() {
   let allMatches = [];
   let allPlayerStats = [];
   let ourClubName = 'Our Club';
-  let filterMode = 'time';
   let filterCompetitionId = '';
   let filterStatus = '';
   let sortMode = 'name';
@@ -58,37 +59,39 @@ export async function matchCenterView() {
         <h2>Player Statistics</h2>
         <div class="toolbar">
           <input type="text" id="player-stats-search" placeholder="Search players…">
-          <button class="btn-icon" id="sort-toggle-btn" title="Sort">🔽 Sort</button>
-          <span id="active-sort-label" style="font-size:0.82rem; color:#666;">Name (A–Z)</span>
+          <div class="popover-anchor">
+            <button class="btn-icon" id="sort-toggle-btn" title="Sort">🔽 Sort</button>
 
-          <div class="filter-popover hidden" id="sort-popover">
-            <div class="radio-line">
-              <input type="radio" name="sort-mode" value="name" id="sort-mode-name" checked>
-              <label for="sort-mode-name" style="margin:0;">Name (A–Z)</label>
-            </div>
-            <div class="radio-line">
-              <input type="radio" name="sort-mode" value="appearances" id="sort-mode-appearances">
-              <label for="sort-mode-appearances" style="margin:0;">Appearances</label>
-            </div>
-            <div class="radio-line">
-              <input type="radio" name="sort-mode" value="goals" id="sort-mode-goals">
-              <label for="sort-mode-goals" style="margin:0;">Goals</label>
-            </div>
-            <div class="radio-line">
-              <input type="radio" name="sort-mode" value="assists" id="sort-mode-assists">
-              <label for="sort-mode-assists" style="margin:0;">Assists</label>
-            </div>
-            <div class="radio-line">
-              <input type="radio" name="sort-mode" value="yellow_cards" id="sort-mode-yellow">
-              <label for="sort-mode-yellow" style="margin:0;">Yellow Cards</label>
-            </div>
-            <div class="radio-line">
-              <input type="radio" name="sort-mode" value="red_cards" id="sort-mode-red">
-              <label for="sort-mode-red" style="margin:0;">Red Cards</label>
-            </div>
+            <div class="filter-popover hidden" id="sort-popover">
+              <div class="radio-line">
+                <input type="radio" name="sort-mode" value="name" id="sort-mode-name" checked>
+                <label for="sort-mode-name" style="margin:0;">Name (A–Z)</label>
+              </div>
+              <div class="radio-line">
+                <input type="radio" name="sort-mode" value="appearances" id="sort-mode-appearances">
+                <label for="sort-mode-appearances" style="margin:0;">Appearances</label>
+              </div>
+              <div class="radio-line">
+                <input type="radio" name="sort-mode" value="goals" id="sort-mode-goals">
+                <label for="sort-mode-goals" style="margin:0;">Goals</label>
+              </div>
+              <div class="radio-line">
+                <input type="radio" name="sort-mode" value="assists" id="sort-mode-assists">
+                <label for="sort-mode-assists" style="margin:0;">Assists</label>
+              </div>
+              <div class="radio-line">
+                <input type="radio" name="sort-mode" value="yellow_cards" id="sort-mode-yellow">
+                <label for="sort-mode-yellow" style="margin:0;">Yellow Cards</label>
+              </div>
+              <div class="radio-line">
+                <input type="radio" name="sort-mode" value="red_cards" id="sort-mode-red">
+                <label for="sort-mode-red" style="margin:0;">Red Cards</label>
+              </div>
 
-            <button id="sort-apply-btn" class="btn-primary" style="margin-top:0.8rem; width:100%;">Apply</button>
+              <button id="sort-apply-btn" class="btn-primary" style="margin-top:0.8rem; width:100%;">Apply</button>
+            </div>
           </div>
+          <span id="active-sort-label" style="font-size:0.82rem; color:#666;">Name (A–Z)</span>
         </div>
         <p id="player-stats-status" class="save-status"></p>
         <div style="overflow-x:auto;">
@@ -127,33 +130,28 @@ export async function matchCenterView() {
       <div class="card">
         <h2>Matches</h2>
         <div class="toolbar">
-          <button class="btn-icon" id="filter-toggle-btn" title="Filter">🔽 Filter</button>
-          <span id="active-filter-label" style="font-size:0.82rem; color:#666;">Sorted by date</span>
+          <div class="popover-anchor">
+            <button class="btn-icon" id="filter-toggle-btn" title="Filter">🔽 Filter</button>
 
-          <div class="filter-popover hidden" id="filter-popover">
-            <div class="radio-line">
-              <input type="radio" name="filter-mode" value="time" id="filter-mode-time" checked>
-              <label for="filter-mode-time" style="margin:0;">Time (default)</label>
-            </div>
-            <div class="radio-line">
-              <input type="radio" name="filter-mode" value="competition" id="filter-mode-competition">
-              <label for="filter-mode-competition" style="margin:0;">Competition</label>
-            </div>
-            <select id="filter-competition-select" class="hidden"></select>
+            <div class="filter-popover hidden" id="filter-popover">
+              <label style="display:block; font-size:0.8rem; font-weight:600; margin-bottom:0.3rem;">Competition</label>
+              <select id="filter-competition-select">
+                <option value="">All Competitions</option>
+              </select>
 
-            <div class="radio-line" style="margin-top:0.4rem;">
-              <input type="radio" name="filter-mode" value="status" id="filter-mode-status">
-              <label for="filter-mode-status" style="margin:0;">Status</label>
-            </div>
-            <select id="filter-status-select" class="hidden">
-              <option value="scheduled">Scheduled</option>
-              <option value="completed">Completed</option>
-              <option value="postponed">Postponed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
+              <label style="display:block; font-size:0.8rem; font-weight:600; margin:0.8rem 0 0.3rem;">Status</label>
+              <select id="filter-status-select">
+                <option value="">All Statuses</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="completed">Completed</option>
+                <option value="postponed">Postponed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
 
-            <button id="filter-apply-btn" class="btn-primary" style="margin-top:0.8rem; width:100%;">Apply</button>
+              <button id="filter-apply-btn" class="btn-primary" style="margin-top:0.8rem; width:100%;">Apply</button>
+            </div>
           </div>
+          <span id="active-filter-label" style="font-size:0.82rem; color:#666;">Sorted by date</span>
         </div>
         <p id="match-load-status" class="save-status"></p>
         <div id="matches-list"></div>
@@ -316,9 +314,9 @@ export async function matchCenterView() {
 
   function populateCompetitionFilterDropdown() {
     const select = document.getElementById('filter-competition-select');
-    select.innerHTML = allCompetitions.map(c =>
+    select.innerHTML = `<option value="">All Competitions</option>` + allCompetitions.map(c =>
       `<option value="${c.id}">${escapeHtml(c.name)}${c.season ? ` (${escapeHtml(c.season)})` : ''}</option>`
-    ).join('') || `<option value="">No competitions yet</option>`;
+    ).join('');
   }
 
   async function loadMatches() {
@@ -355,27 +353,16 @@ export async function matchCenterView() {
     }
   });
 
-  document.querySelectorAll('input[name="filter-mode"]').forEach(radio => {
-    radio.addEventListener('change', () => {
-      const mode = document.querySelector('input[name="filter-mode"]:checked').value;
-      document.getElementById('filter-competition-select').classList.toggle('hidden', mode !== 'competition');
-      document.getElementById('filter-status-select').classList.toggle('hidden', mode !== 'status');
-    });
-  });
-
   document.getElementById('filter-apply-btn').addEventListener('click', () => {
-    filterMode = document.querySelector('input[name="filter-mode"]:checked').value;
     filterCompetitionId = document.getElementById('filter-competition-select').value;
     filterStatus = document.getElementById('filter-status-select').value;
 
-    const labelEl = document.getElementById('active-filter-label');
-    if (filterMode === 'competition') {
-      labelEl.textContent = `Competition: ${competitionName(filterCompetitionId)}`;
-    } else if (filterMode === 'status') {
-      labelEl.textContent = `Status: ${filterStatus}`;
-    } else {
-      labelEl.textContent = 'Sorted by date';
-    }
+    const labelParts = [];
+    if (filterCompetitionId) labelParts.push(competitionName(filterCompetitionId));
+    if (filterStatus) labelParts.push(filterStatus);
+    document.getElementById('active-filter-label').textContent = labelParts.length
+      ? labelParts.join(' · ')
+      : 'Sorted by date';
 
     document.getElementById('filter-popover').classList.add('hidden');
     renderMatchesList();
@@ -385,9 +372,10 @@ export async function matchCenterView() {
     const list = document.getElementById('matches-list');
     let filtered = [...allMatches];
 
-    if (filterMode === 'competition' && filterCompetitionId) {
+    if (filterCompetitionId) {
       filtered = filtered.filter(m => m.competition_id === filterCompetitionId);
-    } else if (filterMode === 'status' && filterStatus) {
+    }
+    if (filterStatus) {
       filtered = filtered.filter(m => m.status === filterStatus);
     }
 
