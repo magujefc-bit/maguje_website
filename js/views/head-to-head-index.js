@@ -41,7 +41,7 @@ export async function headToHeadIndexView() {
     if (!data.length) { slot.innerHTML = states.empty({ message: 'No completed matches recorded yet.' }); return { cleanup: null }; }
 
     slot.innerHTML = data.map(row => `
-      <a href="/team/head-to-head/${row.opponent_team_id}" class="h2h-row">
+      <a href="/results/head-to-head/${row.opponent_team_id}" class="h2h-row">
         <div class="h2h-row__crest">${lazyImage({ src: row.opponent_crest, alt: row.opponent_name, aspect: 'square' })}</div>
         <span class="h2h-row__name">${row.opponent_name}</span>
         <span class="h2h-row__record"><strong>${row.wins}W</strong> ${row.draws}D ${row.losses}L <span style="color:rgba(16,36,26,0.4);">(${row.played} played)</span></span>
