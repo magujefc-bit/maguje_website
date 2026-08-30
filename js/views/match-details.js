@@ -18,6 +18,7 @@ injectStyle(
   .match-details-sidebar { display: flex; flex-direction: column; gap: var(--sp-md); }
   .sidebar-card { background: var(--color-summit-white); border: 1px solid var(--color-line); border-radius: var(--radius-md); padding: var(--sp-sm); }
   .sidebar-card__title { font-family: var(--font-mono); font-size: var(--fs-xs); text-transform: uppercase; color: rgba(16,36,26,0.5); margin-bottom: var(--sp-xs); }
+  .match-details-scoreboard-wrap { margin-bottom: var(--sp-md); }
 `,
 );
 
@@ -30,7 +31,7 @@ export async function matchDetailsView(params) {
     const { data: match, error } = await supabase
       .from("matches")
       .select(
-        "id, slug, match_date, match_time, status, live_state, our_score, opponent_score, venue, opponent_team_id, competition:competitions(id, name)",
+        "id, slug, match_date, match_time, status, live_state, is_live, our_score, opponent_score, venue, opponent_team_id, competition:competitions(id, name)",
       )
       .eq("slug", slug)
       .maybeSingle();
@@ -58,23 +59,34 @@ export async function matchDetailsView(params) {
 }
 
 async function renderMatch(root, match) {
-  const headerData = {
-    status: match.is_live ? "live" : match.status,
-    kickoffAt: combineDateTime(match.match_date, match.match_time),
-    venue: match.venue,
-    homeScore: match.our_score,
-    awayScore: match.opponent_score,
-    competition: match.competition,
-    homeTeam: { name: "Maguje FC", crestUrl: "/assets/crest.svg" },
-    awayTeam: {
-      name: match.opponent?.name || "TBD",
-      crestUrl: match.opponent?.logo_url,
-    },
-  };
+  // Live matches get the same real-time scoreboard used in the
+  // dashboard (<fab-scoreboard>, already loaded site-wide via
+  // index.html) instead of the static header. It handles its own
+  // data fetching and Supabase realtime subscriptions internally —
+  // nothing further to wire up here.
+  const isLive =
+    window.ScoreboardCore &&
+    window.ScoreboardCore.isLivePhase(match.live_state);
+
+  const headerHtml = isLive
+    ? `<div class="match-details-scoreboard-wrap"><fab-scoreboard match-id="${match.id}"></fab-scoreboard></div>`
+    : matchHeader({
+        status: match.is_live ? "live" : match.status,
+        kickoffAt: combineDateTime(match.match_date, match.match_time),
+        venue: match.venue,
+        homeScore: match.our_score,
+        awayScore: match.opponent_score,
+        competition: match.competition,
+        homeTeam: { name: "Maguje FC", crestUrl: "/assets/crest.svg" },
+        awayTeam: {
+          name: match.opponent?.name || "TBD",
+          crestUrl: match.opponent?.logo_url,
+        },
+      });
 
   await viewContainer.render(`
     <div class="container match-details-main">
-      <div data-slot="header">${matchHeader(headerData)}</div>
+      <div data-slot="header">${headerHtml}</div>
       <div class="layout-split match-details-content">
         <div><div data-slot="tabs"></div><div data-slot="tab-panel"></div></div>
         <div class="match-details-sidebar" data-slot="sidebar"></div>
