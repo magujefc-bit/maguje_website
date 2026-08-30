@@ -2,11 +2,7 @@ import { router } from '../router.js';
 import { dashPath } from './config.js';
 import { getCurrentAdmin } from './supabase-client-esm.js';
 import { sidebar } from './components/sidebar.js';
-
-// The single email allowed into owner-only areas: the Developer Page,
-// Bug Reports, and the install-count stat (per the plan — these three
-// are yours specifically, not shared super_admin territory).
-const OWNER_EMAIL = 'fabrisvicky1@gmail.com';
+import { OWNER_EMAIL } from './owner-config.js';
 
 function showAccessDenied(role) {
   const main = document.getElementById('main');
@@ -33,7 +29,7 @@ export async function requireAdmin(allowedRoles = null) {
     return null;
   }
 
-  sidebar.mount(admin.role);
+  sidebar.mount(admin.role, admin.email);
 
   if (allowedRoles && !allowedRoles.includes(admin.role)) {
     showAccessDenied(admin.role);
