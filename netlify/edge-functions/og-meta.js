@@ -73,7 +73,7 @@ function matchRoute(pathname) {
     { re: /^\/events\/([^/]+)\/?$/, build: buildEventMeta },
     { re: /^\/gallery\/([^/]+)\/?$/, build: buildGalleryMeta },
     { re: /^\/matches\/([^/]+)\/?$/, build: buildMatchMeta },
-    { re: /^\/team\/players\/([^/]+)\/?$/, build: buildPlayerMeta },
+    { re: /^\/players\/([^/]+)\/?$/, build: buildPlayerMeta },
     { re: /^\/competitions\/([^/]+)\/?$/, build: buildCompetitionMeta },
   ];
 
