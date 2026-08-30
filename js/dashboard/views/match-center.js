@@ -197,12 +197,11 @@ export async function matchCenterView() {
 
     let filtered = allPlayerStats.filter(p =>
       !search ||
-      (p.field_name || '').toLowerCase().includes(search) ||
-      (p.full_name || '').toLowerCase().includes(search)
+      (p.player_name || '').toLowerCase().includes(search)
     );
 
     if (sortMode === 'name') {
-      filtered.sort((a, b) => (a.field_name || a.full_name).localeCompare(b.field_name || b.full_name));
+      filtered.sort((a, b) => (a.player_name || '').localeCompare(b.player_name || ''));
     } else {
       filtered.sort((a, b) => (b[sortMode] || 0) - (a[sortMode] || 0));
     }
@@ -214,7 +213,7 @@ export async function matchCenterView() {
 
     tbody.innerHTML = filtered.map(p => `
       <tr>
-        <td>${escapeHtml(p.field_name || p.full_name)}</td>
+        <td>${escapeHtml(p.player_name)}</td>
         <td style="text-align:center;">${p.appearances}</td>
         <td style="text-align:center;">${p.goals}</td>
         <td style="text-align:center;">${p.assists}</td>
