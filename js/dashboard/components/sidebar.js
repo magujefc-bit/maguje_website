@@ -1,10 +1,13 @@
 import { router } from '../../router.js';
 import { dashPath } from '../config.js';
 import { supabaseClient } from '../supabase-client-esm.js';
+import { OWNER_EMAIL } from '../owner-config.js';
 
 // Same per-role nav sections as the original app-shell.js — unchanged.
 // hrefs are now router paths (prefixed with the dashboard's base path)
-// instead of filenames.
+// instead of filenames. Links marked ownerOnly are filtered out for
+// every super_admin except OWNER_EMAIL, even though the role itself
+// grants everything else in this section.
 const NAV_SECTIONS = {
   super_admin: [
     {
@@ -13,7 +16,7 @@ const NAV_SECTIONS = {
         { href: dashPath('/managers'), icon: '👥', label: 'Managers' },
         { href: dashPath('/auth-records'), icon: '🔑', label: 'Auth Records' },
         { href: dashPath('/system-log'), icon: '📋', label: 'System Log' },
-        { href: dashPath('/developer-profile'), icon: '💻', label: 'Developer Page' },
+        { href: dashPath('/developer-profile'), icon: '💻', label: 'Developer Page', ownerOnly: true },
       ],
     },
   ],
@@ -81,24 +84,32 @@ const SIDEBAR_STYLES = `
   </style>
 `;
 
-function buildNavMarkup(role) {
+function buildNavMarkup(role, email) {
   const sections = NAV_SECTIONS[role] || [];
   return sections
     .map(
-      (section) => `
-        <div class="nav-section">
-          <div class="nav-section-title">${section.title}</div>
-          ${section.links
-            .map(
-              (link) => `
-                <a class="nav-link" href="${link.href}">
-                  <span class="icon">${link.icon}</span> ${link.label}
-                </a>
-              `,
-            )
-            .join('')}
-        </div>
-      `,
+      (section) => {
+        const visibleLinks = section.links.filter(
+          (link) => !link.ownerOnly || email === OWNER_EMAIL,
+        );
+
+        if (!visibleLinks.length) return '';
+
+        return `
+          <div class="nav-section">
+            <div class="nav-section-title">${section.title}</div>
+            ${visibleLinks
+              .map(
+                (link) => `
+                  <a class="nav-link" href="${link.href}">
+                    <span class="icon">${link.icon}</span> ${link.label}
+                  </a>
+                `,
+              )
+              .join('')}
+          </div>
+        `;
+      },
     )
     .join('');
 }
@@ -137,7 +148,7 @@ function wireMobileMenu() {
 }
 
 export const sidebar = {
-  mount(role) {
+  mount(role, email) {
     const rootEl = document.getElementById('app-sidebar-root');
     if (!rootEl) return;
 
@@ -154,7 +165,7 @@ export const sidebar = {
 
         <button id="menuToggle">☰ Menu</button>
 
-        <nav id="nav">${buildNavMarkup(role)}</nav>
+        <nav id="nav">${buildNavMarkup(role, email)}</nav>
 
         <div class="sidebar-footer">
           <button id="logoutBtn">Log Out</button>
