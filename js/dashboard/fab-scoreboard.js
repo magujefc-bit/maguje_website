@@ -239,33 +239,50 @@ const TEMPLATE = `
       this._tickerIdx = 0;
       this._rebuildTickerItems();
       this._renderTickerFrame(false);
+      if (!this._tickerItems.length) return;
       this._tickerTimer = setInterval(() => {
         this._tickerIdx = (this._tickerIdx + 1) % this._tickerItems.length;
         this._renderTickerFrame(true);
       }, TICKER_ROTATE_MS);
     }
 
-    _rebuildTickerItems() {
+        _rebuildTickerItems() {
       const core = window.ScoreboardCore;
       const minute = core.currentMinute(this._match);
-      const starterNames = this._lineups.filter((l) => l.is_starter).map((l) => this._playerName(l.player_id));
+      const items = [];
+
+      items.push(`${core.phaseLabel(this._match.live_state)}${minute !== null ? ` · Minute ${minute}` : ""}`);
+
+      if (core.shouldShowLineup(this._match.live_state, minute)) {
+        const starterNames = this._lineups
+          .filter((l) => l.is_starter)
+          .map((l) => this._playerName(l.player_id));
+        if (starterNames.length) {
+          items.push(`Starting XI: ${starterNames.join(", ")}`);
+        }
+      }
 
       const events = [
         ...this._goals.map((g) => ({
-          minute: g.minute,
+          minute: g.minute ?? 0,
           text: g.is_opponent_goal
             ? `⚽ GOAL — ${this._teamName(this._match.opponent_team_id)}`
             : `⚽ GOAL — ${this._playerName(g.scorer_id)}${g.assist_id ? ` (assist: ${this._playerName(g.assist_id)})` : ""}`,
         })),
         ...this._cards.map((c) => ({
-          minute: c.minute,
+          minute: c.minute ?? 0,
           text: `${c.card_type === "yellow" ? "🟨" : "🟥"} ${this._playerName(c.player_id)}`,
         })),
         ...this._subs.map((s) => ({
-          minute: s.minute,
+          minute: s.minute ?? 0,
           text: `🔄 ${this._playerName(s.player_out_id)} → ${this._playerName(s.player_in_id)}`,
         })),
-      ];
+      ]
+        .sort((a, b) => b.minute - a.minute)
+        .map((e) => `${e.minute}' ${e.text}`);
+
+      this._tickerItems = items.concat(events);
+    }
 
       this._tickerItems = core.buildTickerItems({
         phase: this._match.live_state,
