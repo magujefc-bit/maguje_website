@@ -4,16 +4,20 @@
  * Self-contained live scoreboard web component.
  * Drop it into any plain HTML/JS page (admin or public site) via:
  *
- *   <script src="supabase-client.js"></script>   (must define window.supabaseClient)
- *   <script src="scoreboard-core.js"></script>
- *   <script src="fab-scoreboard.js"></script>
- *   ...
- *   <div id="scoreboard-slot"></div>
- *   <script>
- *     const sb = document.createElement("fab-scoreboard");
- *     sb.setAttribute("match-id", theMatchId);
- *     document.getElementById("scoreboard-slot").replaceWith(sb);
- *   </script>
+ *   const sb = document.createElement("fab-scoreboard");
+ *   sb.supabaseClient = yourClientInstance; // optional — see below
+ *   sb.setAttribute("match-id", theMatchId);
+ *   document.getElementById("scoreboard-slot").replaceWith(sb);
+ *
+ * Client resolution order:
+ *   1. `el.supabaseClient` — set this explicitly BEFORE inserting the
+ *      element into the DOM if your page has its own client instance
+ *      (e.g. the public site's ES-module client). This guarantees the
+ *      component uses the SAME client/connection as the rest of the
+ *      page, rather than a second, independent one.
+ *   2. `window.supabaseClient` — fallback, used by the dashboard
+ *      (unchanged behaviour from before).
+ *   3. bare global `supabaseClient` — last-resort fallback.
  *
  * It fetches its own data (club/teams/players/match/goals/cards/subs/lineups),
  * subscribes to Supabase realtime for live updates, and renders entirely
@@ -29,23 +33,6 @@
 
   const TICKER_ROTATE_MS = 4500;
   const CLOCK_TICK_MS = 1000;
-  
-
-  // Some setups attach the client to window.supabaseClient, others just
-  // declare `const supabaseClient = ...` as a bare top-level variable in a
-  // classic <script> (which still works for scripts that reference it by
-  // name, but is NOT the same as window.supabaseClient). This helper finds
-  // it either way so fab-scoreboard.js doesn't care which pattern is used.
-  function getSupabase() {
-    if (typeof window !== "undefined" && window.supabaseClient) return window.supabaseClient;
-    try {
-      // eslint-disable-next-line no-undef
-      if (typeof supabaseClient !== "undefined" && supabaseClient) return supabaseClient;
-    } catch (e) {
-      /* not defined at all — fall through */
-    }
-    return null;
-  }
 
 const TEMPLATE = `
     <style>
@@ -119,6 +106,22 @@ const TEMPLATE = `
       this._tickerTimer = null;
       this._clockTimer = null;
       this._channel = null;
+
+      // Optional: set this BEFORE inserting the element into the DOM
+      // to force a specific client instance. See file header comment.
+      this.supabaseClient = null;
+    }
+
+    _getSupabase() {
+      if (this.supabaseClient) return this.supabaseClient;
+      if (typeof window !== "undefined" && window.supabaseClient) return window.supabaseClient;
+      try {
+        // eslint-disable-next-line no-undef
+        if (typeof supabaseClient !== "undefined" && supabaseClient) return supabaseClient;
+      } catch (e) {
+        /* not defined at all — fall through */
+      }
+      return null;
     }
 
     connectedCallback() {
@@ -128,8 +131,8 @@ const TEMPLATE = `
         this._renderMessage("No match-id provided");
         return;
       }
-      if (!getSupabase()) {
-        this._renderMessage("supabaseClient not found — load supabase-client.js before fab-scoreboard.js");
+      if (!this._getSupabase()) {
+        this._renderMessage("supabaseClient not found — set el.supabaseClient or load supabase-client.js before fab-scoreboard.js");
         return;
       }
       if (!window.ScoreboardCore) {
@@ -144,7 +147,7 @@ const TEMPLATE = `
     disconnectedCallback() {
       if (this._clockTimer) clearInterval(this._clockTimer);
       if (this._tickerTimer) clearInterval(this._tickerTimer);
-      if (this._channel) getSupabase().removeChannel(this._channel);
+      if (this._channel) this._getSupabase().removeChannel(this._channel);
     }
 
     async _boot() {
@@ -165,12 +168,11 @@ const TEMPLATE = `
     }
 
     _restoreLayout() {
-      // Re-inject the full template in case _renderMessage overwrote it earlier.
       this.shadowRoot.innerHTML = TEMPLATE;
     }
 
     async _loadAll() {
-      const sb = getSupabase();
+      const sb = this._getSupabase();
       const [{ data: club }, { data: teams }, { data: players }, { data: match }] = await Promise.all([
         sb.from("club_profile").select("name").eq("id", 1).single(),
         sb.from("teams").select("*"),
@@ -207,7 +209,7 @@ const TEMPLATE = `
     }
 
     _subscribeRealtime() {
-      const sb = getSupabase();
+      const sb = this._getSupabase();
       this._channel = sb
         .channel(`fab-scoreboard-${this._matchId}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "matches", filter: `id=eq.${this._matchId}` }, () => this._reloadAndRender())
@@ -222,7 +224,7 @@ const TEMPLATE = `
       await this._loadAll();
       if (!this._match) return;
       this._renderAll();
-      this._startTicker(); // rebuild the queue with fresh events
+      this._startTicker();
     }
 
     _startClock() {
@@ -307,7 +309,6 @@ const TEMPLATE = `
       const score = core.computeScore(this._goals, m.is_home);
       this.shadowRoot.querySelector(".sb-score").textContent = `${score.home} – ${score.away}`;
 
-      // Card badges: only our own club's tallies are trackable in this schema.
       const ourCounts = core.cardCounts(this._cards);
       const ourSide = m.is_home ? "home" : "away";
       const oppSide = m.is_home ? "away" : "home";
