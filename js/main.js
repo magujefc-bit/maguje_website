@@ -38,12 +38,14 @@ import { eventsView } from "./views/events.js";
 import { eventDetailsView } from "./views/event-details.js";
 import { supportersView } from "./views/supporters.js";
 import { contactView } from "./views/contact.js";
+import { reportIssueView } from "./views/report-issue.js";
 import { searchView } from "./views/search.js";
 import { privacyView } from "./views/privacy.js";
 import { termsView } from "./views/terms.js";
 import { notFoundView } from "./views/not-found.js";
 import { developerView } from "./views/developer.js";
 import { developerProfileView as dashDeveloperProfileView } from "./dashboard/views/developer-profile.js";
+import { reportIssueDashboardView } from "./dashboard/views/report-issue.js";
 
 // ---------------------------------------------------------------
 // Admin dashboard — merged into this same SPA/router, living under
@@ -226,6 +228,7 @@ async function boot() {
     .add("/events/:slug", withMobileGate(eventDetailsView))
     .add("/supporters", withMobileGate(supportersView))
     .add("/contact", withMobileGate(contactView))
+    .add("/report-issue", withMobileGate(reportIssueView))
     .add("/search", withMobileGate(searchView))
     .add("/privacy", withMobileGate(privacyView))
     .add("/terms", withMobileGate(termsView))
@@ -250,6 +253,7 @@ async function boot() {
     .add(`${DASH_BASE_PATH}/content`, dashContentDashboardView)
     .add("/developer", withMobileGate(developerView))
     .add(`${DASH_BASE_PATH}/developer-profile`, dashDeveloperProfileView)
+    .add(`${DASH_BASE_PATH}/report-issue`, reportIssueDashboardView)
     .notFound(notFoundView);
 
   document.addEventListener("route:after", (e) => {
