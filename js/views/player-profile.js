@@ -313,11 +313,11 @@ export async function playerProfileView(params) {
           </h1>
 
           <a
-            href="/team"
+            href="/players"
             class="btn btn--primary"
             style="margin-top: var(--sp-md);"
           >
-            Back to Team
+            Back to Players
           </a>
         </div>
       `);
@@ -423,7 +423,7 @@ async function renderProfile(root, player) {
         }
 
         <div style="margin-block: var(--sp-md);">
-          ${shareBar(window.location.origin + "/team/players/" + player.slug, player.full_name)}
+          ${shareBar(window.location.origin + "/players/" + player.slug, player.full_name)}
         </div>
 
         <!-- =================================================
