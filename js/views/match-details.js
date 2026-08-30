@@ -138,7 +138,7 @@ async function renderMatch(root, match) {
 
   root.querySelector('[data-slot="sidebar"]').innerHTML = `
         <div class="sidebar-card"><div class="sidebar-card__title">Venue</div><p class="text-body-sm">${match.venue || "Not specified"}</p></div>
-        <div class="sidebar-card" style="margin-top: var(--sp-sm);"><div class="sidebar-card__title">Head to Head</div><p class="text-body-sm">Explore Maguje FC's records against opponents.</p><a href="/team/head-to-head" class="btn btn--secondary" style="margin-top: var(--sp-xs); display:inline-block;">View head-to-head →</a></div>
+        <div class="sidebar-card" style="margin-top: var(--sp-sm);"><div class="sidebar-card__title">Head to Head</div><p class="text-body-sm">Explore Maguje FC's records against opponents.</p><a href="/results/head-to-head" class="btn btn--secondary" style="margin-top: var(--sp-xs); display:inline-block;">View head-to-head →</a></div>
         <div class="sidebar-card" style="margin-top: var(--sp-sm);"><div class="sidebar-card__title">Share</div>${shareBar(shareUrl, shareTitle)}</div>
       `;
 
@@ -199,4 +199,4 @@ function buildTimeline(goals, cards, subs) {
     })),
   ];
   return events.sort((a, b) => a.minute - b.minute);
-                 }
+}
