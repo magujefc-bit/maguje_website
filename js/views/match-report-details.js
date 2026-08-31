@@ -13,6 +13,7 @@ injectStyle('match-report-details-view', `
   .match-report-gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-sm); margin-block: var(--sp-lg); }
   .match-report-gallery__item { aspect-ratio: 4/3; border-radius: var(--radius-md); overflow: hidden; cursor: zoom-in; }
   .match-report-gallery__item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .match-report-view-match { display: block; text-align: center; margin-top: var(--sp-md); }
 `);
 
 export async function matchReportDetailsView(params) {
@@ -21,7 +22,11 @@ export async function matchReportDetailsView(params) {
   const root = document.querySelector('#app');
 
   try {
-    const { data: post, error } = await supabase.from('match_report_posts').select('id, slug, title, body, created_at').eq('slug', slug).maybeSingle();
+    const { data: post, error } = await supabase
+      .from('match_report_posts')
+      .select('id, slug, title, body, created_at, match:matches(slug)')
+      .eq('slug', slug)
+      .maybeSingle();
     if (error) throw error;
 
     if (!post) {
@@ -40,6 +45,7 @@ export async function matchReportDetailsView(params) {
         ${cover ? articleHeroImage(cover, post.title) : ''}
         ${articleContent(post.body || '')}
         ${rest.length ? `<div class="match-report-gallery" data-slot="gallery">${rest.map((url, i) => `<div class="match-report-gallery__item" data-lightbox-index="${i + 1}">${lazyImage({ src: url, alt: post.title, aspect: '' })}</div>`).join('')}</div>` : ''}
+        ${post.match?.slug ? `<a href="/matches/${post.match.slug}" class="btn btn--primary match-report-view-match">View Match →</a>` : ''}
         <div class="match-report-details-share">${shareBar(url, post.title)}</div>
         <div style="text-align:center;"><a href="/match-reports" class="btn btn--secondary" style="margin-top: var(--sp-md);">Back to Match Reports</a></div>
       </div>`);
