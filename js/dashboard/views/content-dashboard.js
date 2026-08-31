@@ -181,6 +181,8 @@ export async function contentDashboardView(params, query) {
   let overlayTemplates = [];
   let selectedOverlayId = null;
   let allMatchReportsForDropdown = [];
+  let allMatchesForDropdown = [];
+  let allTeamsForDropdown = [];
 
   // Editing state
   let editingPostId = null;
@@ -311,7 +313,62 @@ export async function contentDashboardView(params, query) {
       `;
     }
 
+    if (currentType === 'match_report') {
+      extraHtml += `
+        <div class="field-grid full">
+          <div>
+            <label>
+              Link to Match
+              (optional — shown as "View Match" on the report page)
+            </label>
+
+            <select id="f-linked-match">
+              <option value="">— None —</option>
+            </select>
+          </div>
+        </div>
+      `;
+    }
+
     container.innerHTML = extraHtml;
+  }
+
+  function matchLabel(m) {
+    const opponent = allTeamsForDropdown.find(t => t.id === m.opponent_team_id);
+    const opponentName = opponent ? opponent.name : 'TBD';
+    const date = m.match_date || '';
+    return m.is_home
+      ? `${date} — vs ${opponentName} (H)`
+      : `${date} — vs ${opponentName} (A)`;
+  }
+
+  async function loadMatchesForDropdown() {
+    const [{ data: matches, error: matchesError }, { data: teams, error: teamsError }] =
+      await Promise.all([
+        supabaseClient
+          .from('matches')
+          .select('id, match_date, is_home, opponent_team_id')
+          .order('match_date', { ascending: false }),
+        supabaseClient.from('teams').select('id, name'),
+      ]);
+
+    if (matchesError || teamsError) {
+      console.error('Could not load matches:', matchesError || teamsError);
+      return;
+    }
+
+    allTeamsForDropdown = teams || [];
+    allMatchesForDropdown = matches || [];
+
+    const select = document.getElementById('f-linked-match');
+    if (!select) return;
+
+    allMatchesForDropdown.forEach(m => {
+      const option = document.createElement('option');
+      option.value = m.id;
+      option.textContent = matchLabel(m);
+      select.appendChild(option);
+    });
   }
 
   async function loadMatchReportsForDropdown() {
@@ -611,6 +668,13 @@ export async function contentDashboardView(params, query) {
       linkedSelect.value = '';
     }
 
+    const linkedMatchSelect =
+      document.getElementById('f-linked-match');
+
+    if (linkedMatchSelect) {
+      linkedMatchSelect.value = '';
+    }
+
     selectedImages =
       new Array(IMAGE_COUNT).fill(null);
 
@@ -674,6 +738,17 @@ export async function contentDashboardView(params, query) {
         if (linkedSelect) {
           linkedSelect.value =
             post.linked_match_report_id || '';
+        }
+      }
+
+      // Linked match (match_report tab only)
+      if (currentType === 'match_report') {
+        const linkedMatchSelect =
+          document.getElementById('f-linked-match');
+
+        if (linkedMatchSelect) {
+          linkedMatchSelect.value =
+            post.match_id || '';
         }
       }
 
@@ -839,6 +914,14 @@ export async function contentDashboardView(params, query) {
 
           payload.linked_match_report_id =
             (linkedSelect && linkedSelect.value) || null;
+        }
+
+        if (currentType === 'match_report') {
+          const linkedMatchSelect =
+            document.getElementById('f-linked-match');
+
+          payload.match_id =
+            (linkedMatchSelect && linkedMatchSelect.value) || null;
         }
 
         // --------------------------------------------
@@ -1218,6 +1301,10 @@ export async function contentDashboardView(params, query) {
 
   if (currentType !== 'match_report') {
     await loadMatchReportsForDropdown();
+  }
+
+  if (currentType === 'match_report') {
+    await loadMatchesForDropdown();
   }
 
   await loadPosts();
