@@ -32,8 +32,6 @@ import { visionMissionView } from "./views/vision-mission.js";
 import { clubOfficialsView } from "./views/club-officials.js";
 import { clubAllTimeStatsView } from "./views/club-all-time-stats.js";
 import { clubHonoursView } from "./views/club-honours.js";
-import { communityView } from "./views/community.js";
-import { activityDetailsView } from "./views/activity-details.js";
 import { eventsView } from "./views/events.js";
 import { eventDetailsView } from "./views/event-details.js";
 import { supportersView } from "./views/supporters.js";
@@ -222,8 +220,6 @@ async function boot() {
     .add("/club-records", withMobileGate(clubAllTimeStatsView))
     .add("/club-records/honours", withMobileGate(clubHonoursView))
     .add("/officials", withMobileGate(clubOfficialsView))
-    .add("/community", withMobileGate(communityView))
-    .add("/community/:slug", withMobileGate(activityDetailsView))
     .add("/events", withMobileGate(eventsView))
     .add("/events/:slug", withMobileGate(eventDetailsView))
     .add("/supporters", withMobileGate(supportersView))
