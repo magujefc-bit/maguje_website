@@ -18,7 +18,7 @@ const NAV_SECTIONS = {
         { href: dashPath('/system-log'), icon: '📋', label: 'System Log' },
         { href: dashPath('/developer-profile'), icon: '💻', label: 'Developer Page', ownerOnly: true },
         { href: dashPath('/report-issue'), icon: '🐞', label: 'Bug Reports', ownerOnly: true },
-        { href: dashPath('/report-issue'), icon: '🐞', label: 'Fix Bugs' },
+        { href: dashPath('/report-issue-dash'), icon: '🐞', label: 'Fix Bugs' },
       ],
     },
   ],
