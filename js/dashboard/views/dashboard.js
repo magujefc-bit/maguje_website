@@ -2,6 +2,7 @@ import { dashPath } from '../config.js';
 import { viewContainer } from '../view-container.js';
 import { requireAdmin } from '../auth-gate.js';
 import { injectStyle } from '../utils/inject-style.js';
+import { OWNER_EMAIL } from '../owner-config.js';
 
 injectStyle('dashboard-view', `
   .welcome-hero { background: linear-gradient(135deg, #109b45, #046926); border-radius: 14px; padding: 1.8rem 2rem; color: #fff; margin-bottom: 2rem; }
@@ -18,14 +19,17 @@ injectStyle('dashboard-view', `
 `);
 
 // Which summary cards each role sees — unchanged from dashboard.html,
-// hrefs now built through dashPath().
+// hrefs now built through dashPath(). Cards marked ownerOnly are
+// filtered out for every super_admin except OWNER_EMAIL, matching
+// the same rule sidebar.js applies to its own nav links.
 const ROLE_CONFIG = {
   super_admin: {
     cards: [
       { title: 'Managers', desc: 'Invite, deactivate, or reactivate admin accounts.', href: dashPath('/managers'), icon: '👥' },
       { title: 'Auth Records', desc: 'Check login/auth history for all accounts.', href: dashPath('/auth-records'), icon: '🔑' },
       { title: 'System Log', desc: 'Review recent admin activity across the system.', href: dashPath('/system-log'), icon: '📋' },
-      {title: 'Developer page', desc: 'Strictly for MAGUJE FC developer.', href: dashPath('/developer-profile'), icon: '💻'},
+      {title: 'Developer page', desc: 'Strictly for MAGUJE FC developer.', href: dashPath('/developer-profile'), icon: '💻', ownerOnly: true},
+      { title: 'Bug Reports', desc: 'Review issues submitted by admins and visitors.', href: dashPath('/report-issue'), icon: '🐞', ownerOnly: true },
       
     ],
   },
@@ -47,7 +51,6 @@ const ROLE_CONFIG = {
   content_manager: {
     cards: [
       { title: 'Game Results', desc: 'Feature match results in the feed.', href: dashPath('/content?tab=matches'), icon: '⚽' },
-      { title: 'Club Activities', desc: 'Feature club activities.', href: dashPath('/content?tab=activities'), icon: '📸' },
       { title: 'Events', desc: 'Feature upcoming events.', href: dashPath('/content?tab=events'), icon: '📆' },
       { title: 'News', desc: 'Feature news items.', href: dashPath('/content?tab=news'), icon: '📰' },
     ],
@@ -59,6 +62,9 @@ export async function dashboardView() {
   if (!admin) return { cleanup: null };
 
   const config = ROLE_CONFIG[admin.role];
+  const visibleCards = config.cards.filter(
+    (c) => !c.ownerOnly || admin.email === OWNER_EMAIL,
+  );
 
   viewContainer.render(`
     <div class="welcome-hero">
@@ -69,7 +75,7 @@ export async function dashboardView() {
   `);
 
   const grid = document.getElementById('summaryGrid');
-  grid.innerHTML = config.cards
+  grid.innerHTML = visibleCards
     .map(
       (c) => `
         <a class="card-link" href="${c.href}">
