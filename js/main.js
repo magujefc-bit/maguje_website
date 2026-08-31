@@ -39,7 +39,6 @@ import { eventDetailsView } from "./views/event-details.js";
 import { supportersView } from "./views/supporters.js";
 import { contactView } from "./views/contact.js";
 import { reportIssueView } from "./views/report-issue.js";
-import { reportIssueViewDash } from "./dashboard/views/report-issue-dash.js";
 import { searchView } from "./views/search.js";
 import { privacyView } from "./views/privacy.js";
 import { termsView } from "./views/terms.js";
@@ -230,7 +229,6 @@ async function boot() {
     .add("/supporters", withMobileGate(supportersView))
     .add("/contact", withMobileGate(contactView))
     .add("/report-issue", withMobileGate(reportIssueView))
-    .add("/report-issue-dash", withMobileGate(reportIssueViewDash))
     .add("/search", withMobileGate(searchView))
     .add("/privacy", withMobileGate(privacyView))
     .add("/terms", withMobileGate(termsView))
