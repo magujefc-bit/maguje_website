@@ -14,6 +14,7 @@ const LEGAL_LINKS = [
   { label: "Privacy Policy", path: "/privacy" },
   { label: "Terms of Service", path: "/terms" },
   { label: "Contact", path: "/contact" },
+  { label: "Report an Issue", path: "/report-issue" },
   { label: "Admin Login", path: "/maguje-dashboard/login" },
 ];
 
@@ -997,7 +998,7 @@ class Footer {
 
           <div class="footer__brand-block">
 
-            <a
+            
               href="/"
               class="footer__brand"
             >
@@ -1046,7 +1047,7 @@ class Footer {
 
                 <li>
 
-                  <a
+                  
                     href="${l.path}"
                     class="footer__link"
                   >
@@ -1079,7 +1080,7 @@ class Footer {
 
                 <li>
 
-                  <a
+                  
                     href="${l.path}"
                     class="footer__link"
                   >
@@ -1124,7 +1125,7 @@ class Footer {
 
                             ? `
 
-                              <a
+                              
                                 href="mailto:${c.value}"
                                 class="footer__link"
                                 data-external
@@ -1138,7 +1139,7 @@ class Footer {
 
                               ? `
 
-                                <a
+                                
                                   href="tel:${c.value}"
                                   class="footer__link"
                                   data-external
@@ -1191,7 +1192,7 @@ class Footer {
 
                     ${social.map((s) => `
 
-                      <a
+                      
                         href="${s.url}"
                         class="footer__social-link"
                         data-external
@@ -1221,7 +1222,7 @@ class Footer {
              DEVELOPER SECTION
         ================================================== -->
 
-        <a
+        
           href="/developer"
           class="footer__developer"
           aria-label="Developed by Victor Onyango — view developer profile"
@@ -1302,7 +1303,7 @@ class Footer {
 
               <li>
 
-                <a
+                
                   href="${l.path}"
                   class="footer__legal-link"
                 >
