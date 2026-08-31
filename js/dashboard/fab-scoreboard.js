@@ -22,14 +22,19 @@
  *   2. `window.supabaseClient` — fallback (original default behaviour).
  *   3. bare global `supabaseClient` — last-resort fallback.
  *
- * Ticker behaviour: each goal/card/substitution is shown in the
- * rotating ticker for 30 seconds starting from the moment this
- * component first observes it (tracked per-event by its database
- * row id), then it drops out automatically — it does not persist
- * indefinitely. The phase/minute status line is always present as
- * a baseline. If multiple events are within their own 30s windows
- * at once, they simply take turns in the rotation; each one's timer
- * runs independently, so whichever arrived first expires first.
+ * Ticker behaviour:
+ *   - Minute 1 of the first half: shows the Starting XI, always.
+ *   - Otherwise: any goal/card/substitution still within its own
+ *     30-second window (measured from the moment it was first seen,
+ *     independently per event) is shown as ONE continuously-rolling
+ *     line. If more than one event is active at once, they appear
+ *     together in that same line, separated by " • " — never
+ *     swapping/alternating between separate frames. Each event's
+ *     30s timer is independent, so the oldest one drops out first.
+ *   - When no event is currently active: falls back to a
+ *     time-scoped greeting naming the current half (the numeric
+ *     clock already ticks elsewhere on the scoreboard, so this
+ *     never duplicates it).
  *
  * NOTE: match_cards / match_substitutions / match_lineups in this schema
  * only track OUR club's players. There is no data source yet for the
@@ -39,9 +44,18 @@
 (function () {
   "use strict";
 
-  const TICKER_ROTATE_MS = 4500;
   const CLOCK_TICK_MS = 1000;
+  const TICKER_CHECK_MS = 1000;
   const EVENT_DISPLAY_WINDOW_MS = 30000;
+
+  const PHASE_GREETING = {
+    not_started: "Kick-off coming up",
+    first_half: "First half underway",
+    half_time: "Half time",
+    second_half: "Second half underway",
+    extra_time: "Extra time underway",
+    full_time: "Full time",
+  };
 
 const TEMPLATE = `
     <style>
@@ -110,16 +124,14 @@ const TEMPLATE = `
       this._clubName = "Our Club";
 
       this._prevBadgeCounts = {};
-      this._tickerItems = [];
-      this._tickerIdx = 0;
       this._tickerTimer = null;
       this._clockTimer = null;
       this._channel = null;
 
       // Tracks the first-observed timestamp per event (keyed by a
-      // stable id like "goal-<uuid>"), so each event's 30s ticker
-      // window is measured independently and persists across
-      // rebuilds/reloads rather than resetting every time.
+      // stable id like "goal-<uuid>"), so each event's 30s window is
+      // measured independently and persists across rebuilds/reloads
+      // rather than resetting every time.
       this._eventArrivalTimes = new Map();
 
       // Optional: set this BEFORE inserting the element into the DOM
@@ -241,7 +253,7 @@ const TEMPLATE = `
       await this._loadAll();
       if (!this._match) return;
       this._renderAll();
-      this._startTicker();
+      this._renderTickerText(this._currentTickerText());
     }
 
     _startClock() {
@@ -251,38 +263,28 @@ const TEMPLATE = `
 
     _startTicker() {
       if (this._tickerTimer) clearInterval(this._tickerTimer);
-      this._tickerIdx = 0;
-      this._rebuildTickerItems();
-      this._renderTickerFrame(false);
+      this._renderTickerText(this._currentTickerText());
+      // Checks once a second purely to notice an event's 30s window
+      // expiring, or a phase/minute transition — not to swap frames.
       this._tickerTimer = setInterval(() => {
-        // Recompute on every rotation so events past their own 30s
-        // window drop out automatically, without needing a new
-        // database change to trigger a rebuild.
-        this._rebuildTickerItems();
-        if (!this._tickerItems.length) return;
-        this._tickerIdx = (this._tickerIdx + 1) % this._tickerItems.length;
-        this._renderTickerFrame(true);
-      }, TICKER_ROTATE_MS);
+        this._renderTickerText(this._currentTickerText());
+      }, TICKER_CHECK_MS);
     }
 
-    _rebuildTickerItems() {
+    _currentTickerText() {
       const core = window.ScoreboardCore;
       const minute = core.currentMinute(this._match);
-      const now = Date.now();
-      const items = [];
-
-      // Baseline item — always present, never expires.
-      items.push(`${core.phaseLabel(this._match.live_state)}${minute !== null ? ` · Minute ${minute}` : ""}`);
 
       if (core.shouldShowLineup(this._match.live_state, minute)) {
         const starterNames = this._lineups
           .filter((l) => l.is_starter)
           .map((l) => this._playerName(l.player_id));
         if (starterNames.length) {
-          items.push(`Starting XI: ${starterNames.join(", ")}`);
+          return `Starting XI: ${starterNames.join(", ")}`;
         }
       }
 
+      const now = Date.now();
       const rawEvents = [
         ...this._goals.map((g) => ({
           key: `goal-${g.id}`,
@@ -303,9 +305,6 @@ const TEMPLATE = `
         })),
       ];
 
-      // First time we ever see a given event, stamp its arrival
-      // time. On every later rebuild, that stamp stays put — it's
-      // what each event's 30-second window is measured against.
       const activeEvents = [];
       rawEvents.forEach((e) => {
         if (!this._eventArrivalTimes.has(e.key)) {
@@ -317,29 +316,26 @@ const TEMPLATE = `
         }
       });
 
-      // Most-recently-arrived active event first; if two events are
-      // both still within their windows, they simply take turns in
-      // this rotation, and whichever arrived first will drop out
-      // first on a later rebuild.
-      activeEvents.sort((a, b) => b.arrivedAt - a.arrivedAt);
-      activeEvents.forEach((e) => items.push(`${e.minute}' ${e.text}`));
+      if (activeEvents.length) {
+        // Oldest-arrived first, so the line reads in the order
+        // things happened; the oldest is also the next to expire.
+        activeEvents.sort((a, b) => a.arrivedAt - b.arrivedAt);
+        return activeEvents.map((e) => `${e.minute}' ${e.text}`).join("  •  ");
+      }
 
-      this._tickerItems = items;
+      return PHASE_GREETING[this._match.live_state] || "";
     }
 
-    _renderTickerFrame(animate) {
+    _renderTickerText(text) {
       const track = this.shadowRoot.querySelector(".sb-ticker-track");
       if (!track) return;
-      const text = this._tickerItems[this._tickerIdx] || "";
-      if (!animate) {
-        track.textContent = text;
-        return;
-      }
-      track.classList.add("fade");
-      setTimeout(() => {
-        track.textContent = text;
-        track.classList.remove("fade");
-      }, 250);
+      // Only touch textContent when it actually changes — the CSS
+      // animation (sb-ticker-scroll) handles the continuous rolling
+      // on its own; resetting textContent every second would
+      // restart/jerk the animation for no reason.
+      if (track.dataset.currentText === text) return;
+      track.dataset.currentText = text;
+      track.textContent = text;
     }
 
     _renderAll() {
