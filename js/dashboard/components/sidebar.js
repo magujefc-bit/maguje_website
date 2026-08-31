@@ -47,7 +47,6 @@ const NAV_SECTIONS = {
       title: 'Feed & Content',
       links: [
         { href: dashPath('/content?tab=matches'), icon: '⚽', label: 'Match Reports' },
-        { href: dashPath('/content?tab=activities'), icon: '📸', label: 'Club Activities' },
         { href: dashPath('/content?tab=events'), icon: '📆', label: 'Events' },
         { href: dashPath('/content?tab=news'), icon: '📰', label: 'News' },
       ],
