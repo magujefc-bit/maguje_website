@@ -296,7 +296,7 @@ export async function contentDashboardView(params, query) {
       `;
     }
 
-    if (currentType !== 'match_report') {
+    if (currentType !== 'match_report' && currentType !== 'news') {
       extraHtml += `
         <div class="field-grid full">
           <div>
@@ -731,7 +731,7 @@ export async function contentDashboardView(params, query) {
       }
 
       // Related match report
-      if (currentType !== 'match_report') {
+      if (currentType !== 'match_report' && currentType !== 'news') {
         const linkedSelect =
           document.getElementById('f-linked-report');
 
@@ -908,7 +908,7 @@ export async function contentDashboardView(params, query) {
             null;
         }
 
-        if (currentType !== 'match_report') {
+        if (currentType !== 'match_report' && currentType !== 'news') {
           const linkedSelect =
             document.getElementById('f-linked-report');
 
@@ -1299,7 +1299,7 @@ export async function contentDashboardView(params, query) {
 
   await loadOverlayTemplates();
 
-  if (currentType !== 'match_report') {
+  if (currentType !== 'match_report' && currentType !== 'news') {
     await loadMatchReportsForDropdown();
   }
 
