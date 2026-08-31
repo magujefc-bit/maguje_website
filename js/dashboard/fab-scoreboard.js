@@ -18,16 +18,18 @@
  *
  * Client resolution order:
  *   1. `el.supabaseClient` — set this explicitly BEFORE inserting the
- *      element into the DOM if your page has its own client instance
- *      (e.g. the public site's ES-module client). This guarantees the
- *      component uses the SAME client/connection as the rest of the
- *      page, rather than a second, independent one.
+ *      element into the DOM if your page has its own client instance.
  *   2. `window.supabaseClient` — fallback (original default behaviour).
  *   3. bare global `supabaseClient` — last-resort fallback.
  *
- * It fetches its own data (club/teams/players/match/goals/cards/subs/lineups),
- * subscribes to Supabase realtime for live updates, and renders entirely
- * inside a Shadow DOM so its styles never collide with the host page.
+ * Ticker behaviour: each goal/card/substitution is shown in the
+ * rotating ticker for 30 seconds starting from the moment this
+ * component first observes it (tracked per-event by its database
+ * row id), then it drops out automatically — it does not persist
+ * indefinitely. The phase/minute status line is always present as
+ * a baseline. If multiple events are within their own 30s windows
+ * at once, they simply take turns in the rotation; each one's timer
+ * runs independently, so whichever arrived first expires first.
  *
  * NOTE: match_cards / match_substitutions / match_lineups in this schema
  * only track OUR club's players. There is no data source yet for the
@@ -39,6 +41,7 @@
 
   const TICKER_ROTATE_MS = 4500;
   const CLOCK_TICK_MS = 1000;
+  const EVENT_DISPLAY_WINDOW_MS = 30000;
 
 const TEMPLATE = `
     <style>
@@ -113,15 +116,17 @@ const TEMPLATE = `
       this._clockTimer = null;
       this._channel = null;
 
+      // Tracks the first-observed timestamp per event (keyed by a
+      // stable id like "goal-<uuid>"), so each event's 30s ticker
+      // window is measured independently and persists across
+      // rebuilds/reloads rather than resetting every time.
+      this._eventArrivalTimes = new Map();
+
       // Optional: set this BEFORE inserting the element into the DOM
       // to force a specific client instance. See file header comment.
       this.supabaseClient = null;
     }
 
-    // Some setups attach the client to window.supabaseClient, others just
-    // declare `const supabaseClient = ...` as a bare top-level variable in a
-    // classic <script>. This checks el.supabaseClient first (see header),
-    // then falls back to the original global-lookup behaviour unchanged.
     _getSupabase() {
       if (this.supabaseClient) return this.supabaseClient;
       if (typeof window !== "undefined" && window.supabaseClient) return window.supabaseClient;
@@ -178,7 +183,6 @@ const TEMPLATE = `
     }
 
     _restoreLayout() {
-      // Re-inject the full template in case _renderMessage overwrote it earlier.
       this.shadowRoot.innerHTML = TEMPLATE;
     }
 
@@ -237,7 +241,7 @@ const TEMPLATE = `
       await this._loadAll();
       if (!this._match) return;
       this._renderAll();
-      this._startTicker(); // rebuild the queue with fresh events
+      this._startTicker();
     }
 
     _startClock() {
@@ -250,26 +254,24 @@ const TEMPLATE = `
       this._tickerIdx = 0;
       this._rebuildTickerItems();
       this._renderTickerFrame(false);
-      if (!this._tickerItems.length) return;
       this._tickerTimer = setInterval(() => {
+        // Recompute on every rotation so events past their own 30s
+        // window drop out automatically, without needing a new
+        // database change to trigger a rebuild.
+        this._rebuildTickerItems();
+        if (!this._tickerItems.length) return;
         this._tickerIdx = (this._tickerIdx + 1) % this._tickerItems.length;
         this._renderTickerFrame(true);
       }, TICKER_ROTATE_MS);
     }
 
-    // NOTE: the original version of this method called
-    // core.buildTickerItems(...) — a method that does not exist
-    // anywhere in scoreboard-core.js. That was a pre-existing bug:
-    // it threw on every boot, before _subscribeRealtime() ever ran,
-    // which is why the scoreboard never received live updates. This
-    // rebuilds the same idea using only methods that actually exist
-    // on window.ScoreboardCore (phaseLabel, currentMinute,
-    // shouldShowLineup) plus local event formatting.
     _rebuildTickerItems() {
       const core = window.ScoreboardCore;
       const minute = core.currentMinute(this._match);
+      const now = Date.now();
       const items = [];
 
+      // Baseline item — always present, never expires.
       items.push(`${core.phaseLabel(this._match.live_state)}${minute !== null ? ` · Minute ${minute}` : ""}`);
 
       if (core.shouldShowLineup(this._match.live_state, minute)) {
@@ -281,26 +283,48 @@ const TEMPLATE = `
         }
       }
 
-      const events = [
+      const rawEvents = [
         ...this._goals.map((g) => ({
+          key: `goal-${g.id}`,
           minute: g.minute ?? 0,
           text: g.is_opponent_goal
             ? `⚽ GOAL — ${this._teamName(this._match.opponent_team_id)}`
             : `⚽ GOAL — ${this._playerName(g.scorer_id)}${g.assist_id ? ` (assist: ${this._playerName(g.assist_id)})` : ""}`,
         })),
         ...this._cards.map((c) => ({
+          key: `card-${c.id}`,
           minute: c.minute ?? 0,
           text: `${c.card_type === "yellow" ? "🟨" : "🟥"} ${this._playerName(c.player_id)}`,
         })),
         ...this._subs.map((s) => ({
+          key: `sub-${s.id}`,
           minute: s.minute ?? 0,
           text: `🔄 ${this._playerName(s.player_out_id)} → ${this._playerName(s.player_in_id)}`,
         })),
-      ]
-        .sort((a, b) => b.minute - a.minute)
-        .map((e) => `${e.minute}' ${e.text}`);
+      ];
 
-      this._tickerItems = items.concat(events);
+      // First time we ever see a given event, stamp its arrival
+      // time. On every later rebuild, that stamp stays put — it's
+      // what each event's 30-second window is measured against.
+      const activeEvents = [];
+      rawEvents.forEach((e) => {
+        if (!this._eventArrivalTimes.has(e.key)) {
+          this._eventArrivalTimes.set(e.key, now);
+        }
+        const arrivedAt = this._eventArrivalTimes.get(e.key);
+        if (now - arrivedAt < EVENT_DISPLAY_WINDOW_MS) {
+          activeEvents.push({ ...e, arrivedAt });
+        }
+      });
+
+      // Most-recently-arrived active event first; if two events are
+      // both still within their windows, they simply take turns in
+      // this rotation, and whichever arrived first will drop out
+      // first on a later rebuild.
+      activeEvents.sort((a, b) => b.arrivedAt - a.arrivedAt);
+      activeEvents.forEach((e) => items.push(`${e.minute}' ${e.text}`));
+
+      this._tickerItems = items;
     }
 
     _renderTickerFrame(animate) {
@@ -339,7 +363,6 @@ const TEMPLATE = `
       const score = core.computeScore(this._goals, m.is_home);
       this.shadowRoot.querySelector(".sb-score").textContent = `${score.home} – ${score.away}`;
 
-      // Card badges: only our own club's tallies are trackable in this schema.
       const ourCounts = core.cardCounts(this._cards);
       const ourSide = m.is_home ? "home" : "away";
       const oppSide = m.is_home ? "away" : "home";
