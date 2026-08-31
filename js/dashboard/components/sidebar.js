@@ -18,7 +18,6 @@ const NAV_SECTIONS = {
         { href: dashPath('/system-log'), icon: '📋', label: 'System Log' },
         { href: dashPath('/developer-profile'), icon: '💻', label: 'Developer Page', ownerOnly: true },
         { href: dashPath('/report-issue'), icon: '🐞', label: 'Bug Reports', ownerOnly: true },
-        { href: dashPath('/report-issue-dash'), icon: '🐞', label: 'Fix Bugs' },
       ],
     },
   ],
@@ -30,7 +29,6 @@ const NAV_SECTIONS = {
         { href: dashPath('/officials'), icon: '🎽', label: 'Officials' },
         { href: dashPath('/club-profile'), icon: '🏟️', label: 'Club Profile & Contacts' },
         { href: dashPath('/club-records'), icon: '📁', label: 'Club Records' },
-        { label: "Report an Issue", path: "/report-issue" },
       ],
     },
   ],
@@ -41,7 +39,6 @@ const NAV_SECTIONS = {
         { href: dashPath('/competitions'), icon: '🏆', label: 'Competitions' },
         { href: dashPath('/match-center'), icon: '📅', label: 'Match Center' },
         { href: dashPath('/results'), icon: '📝', label: 'Results' },
-        { label: "Report an Issue", path: "/report-issue" },
       ],
     },
   ],
@@ -53,7 +50,6 @@ const NAV_SECTIONS = {
         { href: dashPath('/content?tab=activities'), icon: '📸', label: 'Club Activities' },
         { href: dashPath('/content?tab=events'), icon: '📆', label: 'Events' },
         { href: dashPath('/content?tab=news'), icon: '📰', label: 'News' },
-        { label: "Report an Issue", path: "/report-issue" },
       ],
     },
   ],
@@ -91,7 +87,8 @@ const SIDEBAR_STYLES = `
 
 function buildNavMarkup(role, email) {
   const sections = NAV_SECTIONS[role] || [];
-  return sections
+
+  const roleSections = sections
     .map(
       (section) => {
         const visibleLinks = section.links.filter(
@@ -117,6 +114,21 @@ function buildNavMarkup(role, email) {
       },
     )
     .join('');
+
+  // Every role gets a way to report a bug — this is submission access
+  // for the public form, not the owner-only viewer above. A bug in the
+  // Match Center is just as real whether a match_manager or a
+  // content_manager is the one who spots it.
+  const supportSection = `
+    <div class="nav-section">
+      <div class="nav-section-title">Support</div>
+      <a class="nav-link" href="/report-issue">
+        <span class="icon">🐞</span> Report an Issue
+      </a>
+    </div>
+  `;
+
+  return roleSections + supportSection;
 }
 
 function highlightActiveLink(pathname, search) {
