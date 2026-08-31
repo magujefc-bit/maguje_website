@@ -4,10 +4,17 @@
  * Self-contained live scoreboard web component.
  * Drop it into any plain HTML/JS page (admin or public site) via:
  *
- *   const sb = document.createElement("fab-scoreboard");
- *   sb.supabaseClient = yourClientInstance; // optional — see below
- *   sb.setAttribute("match-id", theMatchId);
- *   document.getElementById("scoreboard-slot").replaceWith(sb);
+ *   <script src="supabase-client.js"></script>   (must define window.supabaseClient)
+ *   <script src="scoreboard-core.js"></script>
+ *   <script src="fab-scoreboard.js"></script>
+ *   ...
+ *   <div id="scoreboard-slot"></div>
+ *   <script>
+ *     const sb = document.createElement("fab-scoreboard");
+ *     sb.supabaseClient = yourClientInstance; // optional — see below
+ *     sb.setAttribute("match-id", theMatchId);
+ *     document.getElementById("scoreboard-slot").replaceWith(sb);
+ *   </script>
  *
  * Client resolution order:
  *   1. `el.supabaseClient` — set this explicitly BEFORE inserting the
@@ -15,8 +22,7 @@
  *      (e.g. the public site's ES-module client). This guarantees the
  *      component uses the SAME client/connection as the rest of the
  *      page, rather than a second, independent one.
- *   2. `window.supabaseClient` — fallback, used by the dashboard
- *      (unchanged behaviour from before).
+ *   2. `window.supabaseClient` — fallback (original default behaviour).
  *   3. bare global `supabaseClient` — last-resort fallback.
  *
  * It fetches its own data (club/teams/players/match/goals/cards/subs/lineups),
@@ -112,6 +118,10 @@ const TEMPLATE = `
       this.supabaseClient = null;
     }
 
+    // Some setups attach the client to window.supabaseClient, others just
+    // declare `const supabaseClient = ...` as a bare top-level variable in a
+    // classic <script>. This checks el.supabaseClient first (see header),
+    // then falls back to the original global-lookup behaviour unchanged.
     _getSupabase() {
       if (this.supabaseClient) return this.supabaseClient;
       if (typeof window !== "undefined" && window.supabaseClient) return window.supabaseClient;
@@ -168,6 +178,7 @@ const TEMPLATE = `
     }
 
     _restoreLayout() {
+      // Re-inject the full template in case _renderMessage overwrote it earlier.
       this.shadowRoot.innerHTML = TEMPLATE;
     }
 
@@ -226,7 +237,7 @@ const TEMPLATE = `
       await this._loadAll();
       if (!this._match) return;
       this._renderAll();
-      this._startTicker();
+      this._startTicker(); // rebuild the queue with fresh events
     }
 
     _startClock() {
@@ -246,7 +257,15 @@ const TEMPLATE = `
       }, TICKER_ROTATE_MS);
     }
 
-        _rebuildTickerItems() {
+    // NOTE: the original version of this method called
+    // core.buildTickerItems(...) — a method that does not exist
+    // anywhere in scoreboard-core.js. That was a pre-existing bug:
+    // it threw on every boot, before _subscribeRealtime() ever ran,
+    // which is why the scoreboard never received live updates. This
+    // rebuilds the same idea using only methods that actually exist
+    // on window.ScoreboardCore (phaseLabel, currentMinute,
+    // shouldShowLineup) plus local event formatting.
+    _rebuildTickerItems() {
       const core = window.ScoreboardCore;
       const minute = core.currentMinute(this._match);
       const items = [];
@@ -282,14 +301,6 @@ const TEMPLATE = `
         .map((e) => `${e.minute}' ${e.text}`);
 
       this._tickerItems = items.concat(events);
-    }
-
-      this._tickerItems = core.buildTickerItems({
-        phase: this._match.live_state,
-        minute,
-        starterNames,
-        events,
-      });
     }
 
     _renderTickerFrame(animate) {
@@ -328,6 +339,7 @@ const TEMPLATE = `
       const score = core.computeScore(this._goals, m.is_home);
       this.shadowRoot.querySelector(".sb-score").textContent = `${score.home} – ${score.away}`;
 
+      // Card badges: only our own club's tallies are trackable in this schema.
       const ourCounts = core.cardCounts(this._cards);
       const ourSide = m.is_home ? "home" : "away";
       const oppSide = m.is_home ? "away" : "home";
