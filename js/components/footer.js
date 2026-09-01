@@ -37,31 +37,36 @@ const CLUB_LINKS = [
 /* =========================================================
    DAILY DEVELOPER IMAGE
    Pulled from the "developer-images" folder inside the
-   existing "club-assets" Supabase Storage bucket, instead of
-   a hardcoded list — add or remove images there directly,
-   no code changes needed. Sorted by upload date so the daily
-   pick stays stable and predictable as images are added.
+   existing "club-assets" Supabase Storage bucket.
 ========================================================= */
 
 export async function getDailyDeveloperImage() {
   const { data, error } = await supabase.storage
     .from("club-assets")
     .list("developer-images", {
-      sortBy: { column: "created_at", order: "asc" },
+      sortBy: {
+        column: "created_at",
+        order: "asc",
+      },
     });
 
   if (error) {
-    console.error("[footer] could not load developer images:", error);
+    console.error(
+      "[footer] could not load developer images:",
+      error
+    );
+
     return null;
   }
 
-  // Supabase Storage can include a hidden placeholder file for empty
-  // folders — filter that out, and anything that isn't an image.
+  // Filter out placeholder files and non-image files.
   const imageFiles = (data || []).filter((f) =>
-    /\.(png|jpe?g|webp|gif)$/i.test(f.name),
+    /\.(png|jpe?g|webp|gif)$/i.test(f.name)
   );
 
-  if (!imageFiles.length) return null;
+  if (!imageFiles.length) {
+    return null;
+  }
 
   const today = new Date();
 
@@ -85,7 +90,9 @@ export async function getDailyDeveloperImage() {
 
   const { data: urlData } = supabase.storage
     .from("club-assets")
-    .getPublicUrl(`developer-images/${chosenFile.name}`);
+    .getPublicUrl(
+      `developer-images/${chosenFile.name}`
+    );
 
   return urlData.publicUrl;
 }
@@ -214,27 +221,57 @@ class Footer {
   ========================================================= */
 
   _setupInstallButton() {
-    const btn = this.root.querySelector("#footer-install-btn");
-    if (!btn) return;
 
-    const wrap = this.root.querySelector(".footer__install-wrap");
+    const btn =
+      this.root.querySelector(
+        "#footer-install-btn"
+      );
 
-    btn.addEventListener("click", async () => {
-      if (isInstallAvailable()) {
-        await triggerInstallPrompt();
-      } else {
-        // iOS Safari (and any browser that never fires
-        // beforeinstallprompt) has no programmatic install API —
-        // the only path is the manual "Add to Home Screen" flow.
-        alert(
-          "To install: open the Share menu in your browser, then choose \"Add to Home Screen\".",
-        );
+    if (!btn) {
+      return;
+    }
+
+
+    const wrap =
+      this.root.querySelector(
+        ".footer__install-wrap"
+      );
+
+
+    btn.addEventListener(
+      "click",
+      async () => {
+
+        if (isInstallAvailable()) {
+
+          await triggerInstallPrompt();
+
+        } else {
+
+          /*
+            iOS Safari and browsers that do not expose
+            beforeinstallprompt require manual installation.
+          */
+
+          alert(
+            "To install: open the Share menu in your browser, then choose \"Add to Home Screen\"."
+          );
+
+        }
+
       }
-    });
+    );
+
 
     onInstallAvailabilityChange(() => {
-      if (wrap) wrap.hidden = isAlreadyInstalled();
+
+      if (wrap) {
+        wrap.hidden =
+          isAlreadyInstalled();
+      }
+
     });
+
   }
 
 
@@ -321,7 +358,7 @@ class Footer {
         },
 
         {
-          threshold: 0.35
+          threshold: 0.35,
         }
 
       );
@@ -500,7 +537,11 @@ class Footer {
      FOOTER TEMPLATE
   ========================================================= */
 
-  _template({ social, contacts, developerImageUrl }) {
+  _template({
+    social,
+    contacts,
+    developerImageUrl,
+  }) {
 
     return `
 
@@ -722,7 +763,6 @@ class Footer {
            20 SECOND ANIMATION
         ===================================================== */
 
-
         .footer__developer--cycle
         .footer__developer-name {
 
@@ -753,10 +793,6 @@ class Footer {
 
         @keyframes developerNameCycle {
 
-          /*
-            Start hidden above.
-          */
-
           0% {
 
             opacity: 0;
@@ -767,10 +803,6 @@ class Footer {
 
           }
 
-
-          /*
-            Name rolls into position.
-          */
 
           6% {
 
@@ -783,10 +815,6 @@ class Footer {
           }
 
 
-          /*
-            Stay visible.
-          */
-
           82% {
 
             opacity: 1;
@@ -797,10 +825,6 @@ class Footer {
 
           }
 
-
-          /*
-            Disappear toward the end.
-          */
 
           100% {
 
@@ -821,10 +845,6 @@ class Footer {
 
         @keyframes developerImageCycle {
 
-          /*
-            Start below.
-          */
-
           0% {
 
             opacity: 0;
@@ -835,10 +855,6 @@ class Footer {
 
           }
 
-
-          /*
-            Image settles underneath the name.
-          */
 
           10% {
 
@@ -851,10 +867,6 @@ class Footer {
           }
 
 
-          /*
-            Stay visible.
-          */
-
           82% {
 
             opacity: 1;
@@ -865,10 +877,6 @@ class Footer {
 
           }
 
-
-          /*
-            Disappear toward the end.
-          */
 
           100% {
 
@@ -997,26 +1005,50 @@ class Footer {
         ===================================================== */
 
         .footer__install-wrap {
+
           display: flex;
+
           justify-content: center;
+
           margin: 0 0 32px;
+
         }
+
 
         .footer__install-btn {
+
           display: inline-flex;
+
           align-items: center;
+
           gap: 8px;
-          background: var(--color-ridge-green);
-          color: var(--color-summit-white);
+
+          background:
+            var(--color-ridge-green);
+
+          color:
+            var(--color-summit-white);
+
           font-size: 14px;
+
           font-weight: 600;
+
           padding: 10px 22px;
+
           border-radius: 999px;
-          transition: transform 0.2s ease, opacity 0.2s ease;
+
+          transition:
+            transform 0.2s ease,
+            opacity 0.2s ease;
+
         }
 
+
         .footer__install-btn:hover {
-          transform: translateY(-2px);
+
+          transform:
+            translateY(-2px);
+
         }
 
 
@@ -1063,7 +1095,7 @@ class Footer {
 
           <div class="footer__brand-block">
 
-            
+            <a
               href="/"
               class="footer__brand"
             >
@@ -1112,7 +1144,7 @@ class Footer {
 
                 <li>
 
-                  
+                  <a
                     href="${l.path}"
                     class="footer__link"
                   >
@@ -1145,7 +1177,7 @@ class Footer {
 
                 <li>
 
-                  
+                  <a
                     href="${l.path}"
                     class="footer__link"
                   >
@@ -1190,7 +1222,7 @@ class Footer {
 
                             ? `
 
-                              
+                              <a
                                 href="mailto:${c.value}"
                                 class="footer__link"
                                 data-external
@@ -1204,7 +1236,7 @@ class Footer {
 
                               ? `
 
-                                
+                                <a
                                   href="tel:${c.value}"
                                   class="footer__link"
                                   data-external
@@ -1257,7 +1289,7 @@ class Footer {
 
                     ${social.map((s) => `
 
-                      
+                      <a
                         href="${s.url}"
                         class="footer__social-link"
                         data-external
@@ -1287,7 +1319,7 @@ class Footer {
              DEVELOPER SECTION
         ================================================== -->
 
-        
+        <a
           href="/developer"
           class="footer__developer"
           aria-label="Developed by Victor Onyango — view developer profile"
@@ -1335,9 +1367,15 @@ class Footer {
             }
 
 
-            <span class="footer__developer-cta">
+            <span
+              class="footer__developer-cta"
+            >
               View Developer
-              <span aria-hidden="true">→</span>
+
+              <span aria-hidden="true">
+                →
+              </span>
+
             </span>
 
 
@@ -1350,10 +1388,19 @@ class Footer {
              INSTALL APP
         ================================================== -->
 
-        <div class="footer__install-wrap" ${isAlreadyInstalled() ? "hidden" : ""}>
-          <button type="button" id="footer-install-btn" class="footer__install-btn">
+        <div
+          class="footer__install-wrap"
+          ${isAlreadyInstalled() ? "hidden" : ""}
+        >
+
+          <button
+            type="button"
+            id="footer-install-btn"
+            class="footer__install-btn"
+          >
             📲 Install Maguje App
           </button>
+
         </div>
 
 
@@ -1379,7 +1426,7 @@ class Footer {
 
               <li>
 
-                
+                <a
                   href="${l.path}"
                   class="footer__legal-link"
                 >
