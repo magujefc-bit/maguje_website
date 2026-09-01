@@ -3,6 +3,7 @@ import { viewContainer } from '../view-container.js';
 import { requireAdmin } from '../auth-gate.js';
 import { injectStyle } from '../utils/inject-style.js';
 import { OWNER_EMAIL } from '../owner-config.js';
+import { supabaseClient } from '../supabase-client-esm.js';
 
 injectStyle('dashboard-view', `
   .welcome-hero { background: linear-gradient(135deg, #109b45, #046926); border-radius: 14px; padding: 1.8rem 2rem; color: #fff; margin-bottom: 2rem; }
@@ -16,6 +17,10 @@ injectStyle('dashboard-view', `
   .card-link p { margin: 0; font-size: 0.82rem; color: #777; line-height: 1.4; }
   .card-arrow { float: right; color: #109b45; font-weight: 700; font-size: 1rem; }
   @media (max-width: 800px) { .welcome-hero { padding: 1.4rem 1.3rem; } }
+  .install-stat { background: #fff; border: 1px solid #e2ece5; border-radius: 12px; padding: 1.1rem 1.3rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.8rem; max-width: 320px; }
+  .install-stat__icon { font-size: 1.6rem; }
+  .install-stat__value { font-size: 1.4rem; font-weight: 700; color: #109b45; line-height: 1; }
+  .install-stat__label { font-size: 0.78rem; color: #777; margin-top: 2px; }
 `);
 
 // Which summary cards each role sees — unchanged from dashboard.html,
@@ -71,8 +76,21 @@ export async function dashboardView() {
       <h1>Welcome, ${admin.email.split('@')[0]}</h1>
       <p>Here's what you can manage from your account.</p>
     </div>
+    ${admin.email === OWNER_EMAIL ? `
+      <div class="install-stat" id="installStat">
+        <span class="install-stat__icon">📲</span>
+        <div>
+          <div class="install-stat__value" id="installCount">…</div>
+          <div class="install-stat__label">App Installs</div>
+        </div>
+      </div>
+    ` : ''}
     <div class="dashboard-grid" id="summaryGrid"></div>
   `);
+
+  if (admin.email === OWNER_EMAIL) {
+    loadInstallCount();
+  }
 
   const grid = document.getElementById('summaryGrid');
   grid.innerHTML = visibleCards
@@ -88,4 +106,21 @@ export async function dashboardView() {
     .join('');
 
   return { cleanup: null };
+}
+
+async function loadInstallCount() {
+  const el = document.getElementById('installCount');
+  if (!el) return;
+
+  const { count, error } = await supabaseClient
+    .from('pwa_installs')
+    .select('*', { count: 'exact', head: true });
+
+  if (error) {
+    console.error('[dashboard] install count failed:', error);
+    el.textContent = '—';
+    return;
+  }
+
+  el.textContent = count ?? 0;
 }
