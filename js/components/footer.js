@@ -1,4 +1,10 @@
 import { supabase } from "../supabase-client.js";
+import {
+  isAlreadyInstalled,
+  isInstallAvailable,
+  onInstallAvailabilityChange,
+  triggerInstallPrompt,
+} from "../utils/install-prompt.js";
 
 const QUICK_LINKS = [
   { label: "Fixtures", path: "/fixtures" },
@@ -124,6 +130,7 @@ class Footer {
 
 
     this._setupDeveloperAnimation();
+    this._setupInstallButton();
 
 
     try {
@@ -187,6 +194,7 @@ class Footer {
       */
 
       this._setupDeveloperAnimation();
+      this._setupInstallButton();
 
 
     } catch (err) {
@@ -198,6 +206,35 @@ class Footer {
 
     }
 
+  }
+
+
+  /* =========================================================
+     INSTALL APP BUTTON
+  ========================================================= */
+
+  _setupInstallButton() {
+    const btn = this.root.querySelector("#footer-install-btn");
+    if (!btn) return;
+
+    const wrap = this.root.querySelector(".footer__install-wrap");
+
+    btn.addEventListener("click", async () => {
+      if (isInstallAvailable()) {
+        await triggerInstallPrompt();
+      } else {
+        // iOS Safari (and any browser that never fires
+        // beforeinstallprompt) has no programmatic install API —
+        // the only path is the manual "Add to Home Screen" flow.
+        alert(
+          "To install: open the Share menu in your browser, then choose \"Add to Home Screen\".",
+        );
+      }
+    });
+
+    onInstallAvailabilityChange(() => {
+      if (wrap) wrap.hidden = isAlreadyInstalled();
+    });
   }
 
 
@@ -956,6 +993,34 @@ class Footer {
 
 
         /* =====================================================
+           INSTALL APP BUTTON
+        ===================================================== */
+
+        .footer__install-wrap {
+          display: flex;
+          justify-content: center;
+          margin: 0 0 32px;
+        }
+
+        .footer__install-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          background: var(--color-ridge-green);
+          color: var(--color-summit-white);
+          font-size: 14px;
+          font-weight: 600;
+          padding: 10px 22px;
+          border-radius: 999px;
+          transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        .footer__install-btn:hover {
+          transform: translateY(-2px);
+        }
+
+
+        /* =====================================================
            ACCESSIBILITY
         ===================================================== */
 
@@ -998,7 +1063,7 @@ class Footer {
 
           <div class="footer__brand-block">
 
-            <a
+            
               href="/"
               class="footer__brand"
             >
@@ -1047,7 +1112,7 @@ class Footer {
 
                 <li>
 
-                  <a
+                  
                     href="${l.path}"
                     class="footer__link"
                   >
@@ -1080,7 +1145,7 @@ class Footer {
 
                 <li>
 
-                  <a
+                  
                     href="${l.path}"
                     class="footer__link"
                   >
@@ -1125,7 +1190,7 @@ class Footer {
 
                             ? `
 
-                              <a
+                              
                                 href="mailto:${c.value}"
                                 class="footer__link"
                                 data-external
@@ -1139,7 +1204,7 @@ class Footer {
 
                               ? `
 
-                                <a
+                                
                                   href="tel:${c.value}"
                                   class="footer__link"
                                   data-external
@@ -1192,7 +1257,7 @@ class Footer {
 
                     ${social.map((s) => `
 
-                      <a
+                      
                         href="${s.url}"
                         class="footer__social-link"
                         data-external
@@ -1222,7 +1287,7 @@ class Footer {
              DEVELOPER SECTION
         ================================================== -->
 
-        <a
+        
           href="/developer"
           class="footer__developer"
           aria-label="Developed by Victor Onyango — view developer profile"
@@ -1282,6 +1347,17 @@ class Footer {
 
 
         <!-- =================================================
+             INSTALL APP
+        ================================================== -->
+
+        <div class="footer__install-wrap" ${isAlreadyInstalled() ? "hidden" : ""}>
+          <button type="button" id="footer-install-btn" class="footer__install-btn">
+            📲 Install Maguje App
+          </button>
+        </div>
+
+
+        <!-- =================================================
              FOOTER BOTTOM
         ================================================== -->
 
@@ -1303,7 +1379,7 @@ class Footer {
 
               <li>
 
-                <a
+                
                   href="${l.path}"
                   class="footer__legal-link"
                 >
