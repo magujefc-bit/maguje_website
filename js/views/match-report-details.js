@@ -7,6 +7,7 @@ import { lazyImage, observeLazyImages } from '../components/lazy-image.js';
 import { openLightbox } from '../components/lightbox.js';
 import { injectStyle } from '../utils/inject-style.js';
 import { fetchAllMedia } from './home.js';
+import { fetchOverlayGradients } from '../utils/overlay.js';
 
 injectStyle('match-report-details-view', `
   .match-report-details-share { padding-block: var(--sp-md); border-top: 1px solid var(--color-line); margin-top: var(--sp-lg); }
@@ -24,7 +25,7 @@ export async function matchReportDetailsView(params) {
   try {
     const { data: post, error } = await supabase
       .from('match_report_posts')
-      .select('id, slug, title, body, created_at, match:matches(slug)')
+      .select('id, slug, title, body, created_at, cover_overlay_id, match:matches(slug)')
       .eq('slug', slug)
       .maybeSingle();
     if (error) throw error;
@@ -36,13 +37,15 @@ export async function matchReportDetailsView(params) {
 
     const images = await fetchAllMedia('match_report', post.id);
     const [cover, ...rest] = images;
+    const overlayMap = await fetchOverlayGradients(supabase, [post.cover_overlay_id]);
+    const overlayGradient = overlayMap.get(post.cover_overlay_id) || null;
     const url = window.location.origin + '/match-reports/' + post.slug;
 
     await viewContainer.render(`
       <div class="container section--tight" style="max-width: 780px;">
         ${articleHeader({ eyebrow: 'Match Report', title: post.title })}
         ${articleMetadata({ publishedAt: post.created_at })}
-        ${cover ? articleHeroImage(cover, post.title) : ''}
+        ${cover ? articleHeroImage(cover, post.title, overlayGradient) : ''}
         ${articleContent(post.body || '')}
         ${rest.length ? `<div class="match-report-gallery" data-slot="gallery">${rest.map((url, i) => `<div class="match-report-gallery__item" data-lightbox-index="${i + 1}">${lazyImage({ src: url, alt: post.title, aspect: '' })}</div>`).join('')}</div>` : ''}
         ${post.match?.slug ? `<a href="/matches/${post.match.slug}" class="btn btn--primary match-report-view-match">View Match →</a>` : ''}
