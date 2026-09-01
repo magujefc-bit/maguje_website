@@ -9,6 +9,7 @@ import { liveIndicator } from "../components/controls.js";
 import { observeLazyImages } from "../components/lazy-image.js";
 import { injectStyle } from "../utils/inject-style.js";
 import { initCarousel } from "../components/carousel.js";
+import { fetchOverlayGradients } from "../utils/overlay.js";
 
 injectStyle(
   "home-view",
@@ -163,6 +164,7 @@ injectStyle(
   }
 
   .home-fixture-card-wrap { display: flex; flex-direction: column; gap: var(--sp-sm); width: 100%; }
+  .home-fixture-card-wrap[hidden] { display: none; }
 
   .home-fixture-card-wrap__label {
     display: flex;
@@ -721,7 +723,7 @@ async function loadSecondaryNews(root, carouselInstances) {
   try {
     const { data, error } = await supabase
       .from("news_posts")
-      .select("id, slug, title, body, created_at")
+      .select("id, slug, title, body, created_at, cover_overlay_id")
       .order("created_at", { ascending: false })
       .limit(MAX_NEWS);
 
@@ -732,6 +734,8 @@ async function loadSecondaryNews(root, carouselInstances) {
       return;
     }
 
+    const overlayMap = await fetchOverlayGradients(supabase, data.map((p) => p.cover_overlay_id));
+
     const cards = await Promise.all(
       data.map(async (post) => {
         const cover = await fetchFirstMedia("news", post.id);
@@ -741,6 +745,7 @@ async function loadSecondaryNews(root, carouselInstances) {
           excerpt: excerptFrom(post.body),
           coverImageUrl: cover,
           publishedAt: post.created_at,
+          overlayGradient: overlayMap.get(post.cover_overlay_id) || null,
         })}</div>`;
       }),
     );
@@ -764,7 +769,7 @@ async function loadFeaturedMatchReport(root, carouselInstances) {
   try {
     const { data, error } = await supabase
       .from("match_report_posts")
-      .select("id, slug, title, body, created_at")
+      .select("id, slug, title, body, created_at, cover_overlay_id")
       .order("created_at", { ascending: false })
       .limit(MAX_MATCH_REPORTS);
 
@@ -775,11 +780,13 @@ async function loadFeaturedMatchReport(root, carouselInstances) {
       return;
     }
 
+    const overlayMap = await fetchOverlayGradients(supabase, data.map((p) => p.cover_overlay_id));
+
     const cards = await Promise.all(
       data.map(async (post) => {
         const cover = await fetchFirstMedia("match_report", post.id);
         return `<div class="carousel__slide">${newsCard(
-          { slug: post.slug, title: post.title, excerpt: excerptFrom(post.body), coverImageUrl: cover, publishedAt: post.created_at },
+          { slug: post.slug, title: post.title, excerpt: excerptFrom(post.body), coverImageUrl: cover, publishedAt: post.created_at, overlayGradient: overlayMap.get(post.cover_overlay_id) || null },
           { basePath: "/match-reports", badge: "Match Report" },
         )}</div>`;
       }),
@@ -805,4 +812,4 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
-         }
+}
