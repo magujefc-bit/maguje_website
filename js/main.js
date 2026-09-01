@@ -2,6 +2,7 @@ import { router } from "./router.js";
 import { crestLoader } from "./components/crest-loader.js";
 import { header } from "./components/header.js";
 import { footer } from "./components/footer.js";
+import { initInstallBanner } from "./components/install-banner.js";
 
 import { withMobileGate } from "./utils/mobile-gate.js";
 
@@ -185,6 +186,17 @@ async function boot() {
 
   header.mount();
   await footer.mount();
+
+  // PWA — service worker + install banner only make sense on the
+  // public site, never inside the admin dashboard.
+  if (!startingOnDashboard) {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch((err) => {
+        console.error("[pwa] service worker registration failed:", err);
+      });
+    }
+    initInstallBanner();
+  }
 
   router
     .add("/", withMobileGate(homeView))
