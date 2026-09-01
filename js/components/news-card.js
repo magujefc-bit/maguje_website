@@ -4,7 +4,8 @@ import { lazyImage } from './lazy-image.js';
 injectStyle('news-card', `
   .news-card { display: flex; flex-direction: column; background: var(--color-summit-white); border: 1px solid var(--color-line); border-radius: var(--radius-md); overflow: hidden; transition: transform var(--dur-fast) var(--ease-standard); }
   .news-card:hover { transform: translateY(-2px); }
-  .news-card__image { aspect-ratio: 16/9; }
+  .news-card__image { position: relative; aspect-ratio: 16/9; }
+  .news-card__image-overlay { position: absolute; inset: 0; pointer-events: none; }
   .news-card__body { padding: var(--sp-sm); display: flex; flex-direction: column; gap: var(--sp-3xs); }
   .news-card__eyebrow { font-family: var(--font-mono); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-ridge-green); }
   .news-card__title { font-size: var(--fs-md); line-height: var(--lh-snug); }
@@ -22,7 +23,7 @@ export function newsCard(post, { variant = 'default', basePath = '/news', badge 
   const eyebrow = badge ? `${badge} · ${formatDate(post.publishedAt)}` : formatDate(post.publishedAt);
   return `
     <a href="${basePath}/${post.slug}" class="news-card ${variantClass}">
-      <div class="news-card__image">${lazyImage({ src: post.coverImageUrl, alt: post.title, aspect: 'video' })}</div>
+      <div class="news-card__image">${lazyImage({ src: post.coverImageUrl, alt: post.title, aspect: 'video' })}${post.overlayGradient ? `<div class="news-card__image-overlay" style="background:${post.overlayGradient};"></div>` : ''}</div>
       <div class="news-card__body">
         <span class="news-card__eyebrow">${eyebrow}</span>
         <h3 class="news-card__title">${post.title}</h3>
