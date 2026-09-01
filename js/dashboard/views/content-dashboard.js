@@ -143,12 +143,6 @@ const POST_TYPE_CONFIG = {
     imageCount: 1
   },
 
-  activity: {
-    table: 'activity_posts',
-    label: 'Club Activities',
-    imageCount: 4
-  },
-
   event: {
     table: 'event_posts',
     label: 'Events',
@@ -164,7 +158,6 @@ const POST_TYPE_CONFIG = {
 
 const TAB_QUERY_MAP = {
   matches: 'match_report',
-  activities: 'activity',
   events: 'event',
   news: 'news'
 };
