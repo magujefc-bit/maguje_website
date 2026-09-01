@@ -1,10 +1,11 @@
 import { supabase } from '../supabase-client.js';
 import { viewContainer } from '../view-container.js';
 import { skeletons } from '../components/skeletons.js';
-import { articleHeader, articleContent } from '../components/article.js';
+import { articleHeader, articleContent, articleHeroImage } from '../components/article.js';
 import { shareBar, bindShareBar } from '../components/controls.js';
 import { observeLazyImages } from '../components/lazy-image.js';
 import { fetchFirstMedia } from './home.js';
+import { fetchOverlayGradients } from '../utils/overlay.js';
 import { injectStyle } from '../utils/inject-style.js';
 
 injectStyle('event-details-view', `
@@ -20,7 +21,7 @@ export async function eventDetailsView(params) {
   const root = document.querySelector('#app');
 
   try {
-    const { data: post, error } = await supabase.from('event_posts').select('id, slug, title, body, location, event_date, event_time').eq('slug', slug).maybeSingle();
+    const { data: post, error } = await supabase.from('event_posts').select('id, slug, title, body, location, event_date, event_time, cover_overlay_id').eq('slug', slug).maybeSingle();
     if (error) throw error;
 
     if (!post) {
@@ -29,6 +30,8 @@ export async function eventDetailsView(params) {
     }
 
     const cover = await fetchFirstMedia('event', post.id);
+    const overlayMap = await fetchOverlayGradients(supabase, [post.cover_overlay_id]);
+    const overlayGradient = overlayMap.get(post.cover_overlay_id) || null;
     const url = window.location.origin + '/events/' + post.slug;
 
     await viewContainer.render(`
@@ -39,7 +42,7 @@ export async function eventDetailsView(params) {
           ${post.event_time ? `<div class="event-details-meta__item"><span class="event-details-meta__label">Time</span><span class="event-details-meta__value">${post.event_time}</span></div>` : ''}
           ${post.location ? `<div class="event-details-meta__item"><span class="event-details-meta__label">Location</span><span class="event-details-meta__value">${post.location}</span></div>` : ''}
         </div>
-        ${cover ? `<div class="article-hero-image"><img src="${cover}" alt="${post.title}" style="width:100%;border-radius:var(--radius-md);"></div>` : ''}
+        ${cover ? articleHeroImage(cover, post.title, overlayGradient) : ''}
         ${articleContent(post.body || '')}
         <div style="padding-block: var(--sp-md); border-top: 1px solid var(--color-line); margin-top: var(--sp-lg);">${shareBar(url, post.title)}</div>
       </div>`);
