@@ -77,7 +77,7 @@ class Header {
           <ul class="nav__list">
             ${NAV_ITEMS.map((item) => `
               <li>
-                
+                <a
                   href="${item.path}"
                   class="nav__link"
                   data-path="${item.path}"
@@ -96,7 +96,7 @@ class Header {
           <ul class="nav__list nav__list--tablet">
             ${NAV_ITEMS.slice(0, 6).map((item) => `
               <li>
-                
+                <a
                   href="${item.path}"
                   class="nav__link"
                   data-path="${item.path}"
@@ -120,7 +120,7 @@ class Header {
           </ul>
         </nav>
 
-        
+        <a
           href="/search"
           class="header__search-btn"
           data-path="/search"
@@ -157,7 +157,7 @@ class Header {
               <ul class="mobile-menu__list">
                 ${group.items.map((item) => `
                   <li>
-                    
+                    <a
                       href="${item.path}"
                       class="mobile-menu__link"
                       data-path="${item.path}"
