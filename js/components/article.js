@@ -7,7 +7,8 @@ injectStyle('article', `
   .article-header__title { font-size: var(--fs-2xl); margin-bottom: var(--sp-sm); }
   .article-metadata { display: flex; flex-wrap: wrap; gap: var(--sp-sm); font-size: var(--fs-sm); color: rgba(16,36,26,0.6); padding-bottom: var(--sp-md); border-bottom: 1px solid var(--color-line); margin-bottom: var(--sp-lg); }
   .article-metadata__item { display: flex; align-items: center; gap: 4px; }
-  .article-hero-image { aspect-ratio: 16/9; border-radius: var(--radius-md); overflow: hidden; margin-bottom: var(--sp-lg); }
+  .article-hero-image { position: relative; aspect-ratio: 16/9; border-radius: var(--radius-md); overflow: hidden; margin-bottom: var(--sp-lg); }
+  .article-hero-image__overlay { position: absolute; inset: 0; pointer-events: none; }
   .article-content { font-size: var(--fs-md); line-height: var(--lh-normal); max-width: 68ch; }
   .article-content p { margin-bottom: var(--sp-md); }
   .article-content h2 { font-size: var(--fs-lg); margin: var(--sp-lg) 0 var(--sp-sm); }
@@ -29,7 +30,9 @@ export function articleMetadata(meta) {
   return `<div class="article-metadata">${parts.map(p => `<span class="article-metadata__item">${p}</span>`).join('')}</div>`;
 }
 
-export function articleHeroImage(src, alt) { return `<div class="article-hero-image">${lazyImage({ src, alt, aspect: 'video' })}</div>`; }
+export function articleHeroImage(src, alt, overlayGradient) {
+  return `<div class="article-hero-image">${lazyImage({ src, alt, aspect: 'video' })}${overlayGradient ? `<div class="article-hero-image__overlay" style="background:${overlayGradient};"></div>` : ''}</div>`;
+}
 export function articleContent(bodyHtml) { return `<div class="article-content">${bodyHtml}</div>`; }
 export function relatedNewsSection(titleLabel, cardsHtml) { return `<div class="related-news"><h2 class="related-news__title">${titleLabel}</h2><div class="grid grid--3">${cardsHtml}</div></div>`; }
 
