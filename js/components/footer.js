@@ -1013,6 +1013,9 @@ class Footer {
           margin: 0 0 32px;
 
         }
+.footer__install-wrap[hidden] {
+  display: none;
+}
 
 
         .footer__install-btn {
