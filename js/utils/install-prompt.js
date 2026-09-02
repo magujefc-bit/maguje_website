@@ -47,10 +47,15 @@ export async function triggerInstallPrompt() {
 }
 
 // #25 — log real appinstalled events, guarded against duplicate
-// logging with a stable per-device UUID kept in localStorage. The
-// unique constraint on pwa_installs.device_id is a second line of
-// defense server-side, in case localStorage ever gets cleared and
-// the same device re-fires appinstalled.
+// logging with a stable per-device UUID kept in localStorage. Uses a
+// plain insert() rather than upsert() — Supabase's upsert conflict
+// detection requires RLS to also pass a SELECT check, which anonymous
+// visitors don't have here (only the owner can read pwa_installs), so
+// upsert() was returning 401. A plain insert only needs the INSERT
+// policy we already grant to everyone; if this exact device_id was
+// somehow already logged, Postgres's unique constraint on device_id
+// rejects it with error code 23505, which is caught and treated as
+// success below.
 async function logInstall() {
   let deviceId = localStorage.getItem('maguje_pwa_device_id');
   if (!deviceId) {
@@ -61,9 +66,12 @@ async function logInstall() {
   if (localStorage.getItem('maguje_pwa_install_logged') === deviceId) return;
 
   try {
-    await supabase
-      .from('pwa_installs')
-      .upsert({ device_id: deviceId }, { onConflict: 'device_id', ignoreDuplicates: true });
+    const { error } = await supabase.from('pwa_installs').insert({ device_id: deviceId });
+
+    if (error && error.code !== '23505') {
+      throw error;
+    }
+
     localStorage.setItem('maguje_pwa_install_logged', deviceId);
   } catch (err) {
     console.error('[install-prompt] failed to log install:', err);
