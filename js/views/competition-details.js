@@ -23,20 +23,35 @@ export async function competitionDetailsView(params) {
 
     const url = window.location.origin + '/competitions/' + slug;
 
+    const standingsSectionHtml = comp.type === 'Friendly'
+      ? ''
+      : comp.type === 'Tournament'
+        ? `
+          <div class="competition-overview-section">
+            <h2 class="competition-overview-section__title">Standings & Bracket</h2>
+            <a href="/competitions/${slug}/standings" class="btn btn--secondary">View group standings & bracket →</a>
+          </div>
+        `
+        : `
+          <div class="competition-overview-section">
+            <h2 class="competition-overview-section__title">Standings Preview</h2>
+            <div data-slot="standings-preview"><div class="skel skel-block" style="height:200px;"></div></div>
+          </div>
+        `;
+
     await viewContainer.render(`
       <div class="container">
         ${competitionHeaderBlock(comp)}
         <div style="margin-bottom: var(--sp-md);">${shareBar(url, comp.name)}</div>
-        ${competitionSubNav(slug, 'overview')}
-        <div class="competition-overview-section">
-          <h2 class="competition-overview-section__title">Standings Preview</h2>
-          <div data-slot="standings-preview"><div class="skel skel-block" style="height:200px;"></div></div>
-        </div>
+        ${competitionSubNav(slug, 'overview', comp.type)}
+        ${standingsSectionHtml}
       </div>`);
 
     observeLazyImages(root);
     bindShareBar(root);
-    loadStandingsPreview(root, comp.id);
+    if (comp.type !== 'Friendly' && comp.type !== 'Tournament') {
+      loadStandingsPreview(root, comp.id);
+    }
   } catch (err) {
     console.error('[competition-details] load failed:', err);
     viewContainer.renderError('Could not load this competition.', () => competitionDetailsView(params));
