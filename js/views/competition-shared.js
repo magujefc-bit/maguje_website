@@ -11,11 +11,11 @@ injectStyle('competition-shared', `
 // competitions now has a real slug column (added via migration + auto-gen trigger).
 // No badge/logo column exists in this schema, so competitionHeaderBlock omits it.
 export async function fetchCompetition(slug) {
-  const { data, error } = await supabase.from('competitions').select('id, slug, name, season').eq('slug', slug).maybeSingle();
+  const { data, error } = await supabase.from('competitions').select('id, slug, name, season, type').eq('slug', slug).maybeSingle();
   if (error) throw error;
   if (!data) return null;
 
-  const { count } = await supabase.from('competition_teams').select('team_id', { count: 'exact', head: true }).eq('competition_id', data.id);
+  const { count } = await supabase.from('competition_teams').select('team_id', { count: 'exact', head: true }).eq('competition_id', data.id).eq('is_active', true);
   return { ...data, teamCount: count || 0 };
 }
 
@@ -23,10 +23,10 @@ export function competitionHeaderBlock(comp) {
   return competitionHeader({ name: comp.name, season: comp.season, badgeUrl: null, teamCount: comp.teamCount });
 }
 
-export function competitionSubNav(slug, activeTab) {
+export function competitionSubNav(slug, activeTab, type) {
   const tabs = [
     { id: 'overview', label: 'Overview', path: `/competitions/${slug}` },
-    { id: 'standings', label: 'Standings', path: `/competitions/${slug}/standings` },
+    ...(type === 'Friendly' ? [] : [{ id: 'standings', label: 'Standings', path: `/competitions/${slug}/standings` }]),
     { id: 'fixtures', label: 'Fixtures', path: `/competitions/${slug}/fixtures` },
     { id: 'results', label: 'Results', path: `/competitions/${slug}/results` },
     { id: 'player-statistics', label: 'Player Stats', path: `/competitions/${slug}/player-statistics` },
