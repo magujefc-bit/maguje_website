@@ -33,6 +33,7 @@ export async function competitionDetailView(params, query) {
   let competition = null;
   let allTeams = [];
   let allMatches = [];
+  let competitionTeams = [];
   let ourClubName = 'Our Club';
   let ourClubHomeGround = '';
 
@@ -69,6 +70,7 @@ export async function competitionDetailView(params, query) {
           <input type="time" id="new-time-input" required>
         </div>
       </div>
+      <div id="tournament-fields-slot"></div>
       <button id="create-match-btn" class="btn-primary">Add Match</button>
       <span id="create-match-status" class="save-status"></span>
     </div>
@@ -78,6 +80,8 @@ export async function competitionDetailView(params, query) {
       <p id="matches-load-status" class="save-status"></p>
       <div id="matches-list"></div>
     </div>
+
+    <div id="teams-section-slot"></div>
 
     <div class="modal-overlay hidden" id="modal-overlay">
       <div class="modal-box">
@@ -127,6 +131,11 @@ export async function competitionDetailView(params, query) {
     document.getElementById('comp-title').textContent = competition.name;
     document.getElementById('comp-subtitle').textContent =
       `${competition.type || '—'} · ${competition.season || 'No season'} · ${competition.start_date || '—'} to ${competition.end_date || '—'}`;
+    renderTournamentFieldsSlot();
+    if (competition.type === 'Tournament') {
+      await loadCompetitionTeams();
+    }
+    renderTeamsSectionSlot();
   }
 
   async function loadTeams() {
@@ -231,6 +240,187 @@ export async function competitionDetailView(params, query) {
     return data.id;
   }
 
+  // ---------- TOURNAMENT-ONLY FIELDS (stage / group / bracket position) ----------
+  // League and Friendly competitions never touch any of this — it only
+  // renders when competition.type === 'Tournament', leaving every other
+  // competition type's match form exactly as it was before this feature.
+  const STAGE_OPTIONS = [
+    { value: 'group', label: 'Group Stage' },
+    { value: 'round_of_32', label: 'Round of 32' },
+    { value: 'round_of_16', label: 'Round of 16' },
+    { value: 'quarterfinal', label: 'Quarterfinal' },
+    { value: 'semifinal', label: 'Semifinal' },
+    { value: 'third_place', label: 'Third Place' },
+    { value: 'final', label: 'Final' },
+  ];
+
+  function isTournament() {
+    return !!competition && competition.type === 'Tournament';
+  }
+
+  function stageOptionsHtml(selected) {
+    return `<option value="">— None —</option>` + STAGE_OPTIONS.map(s =>
+      `<option value="${s.value}" ${s.value === selected ? 'selected' : ''}>${s.label}</option>`
+    ).join('');
+  }
+
+  function renderTournamentFieldsSlot() {
+    const slot = document.getElementById('tournament-fields-slot');
+    if (!slot) return;
+    if (!isTournament()) { slot.innerHTML = ''; return; }
+    slot.innerHTML = `
+      <div class="field-grid three">
+        <div>
+          <label>Stage (optional)</label>
+          <select id="new-stage-input">${stageOptionsHtml('')}</select>
+        </div>
+        <div>
+          <label>Group (optional — Group Stage only)</label>
+          <input type="text" id="new-group-input" placeholder="e.g. Group A">
+        </div>
+        <div>
+          <label>Bracket Position (optional)</label>
+          <input type="number" id="new-bracket-position-input" min="1" placeholder="e.g. 1">
+        </div>
+      </div>
+    `;
+  }
+
+  function tournamentFieldsHtmlForEdit(m) {
+    if (!isTournament()) return '';
+    return `
+      <div class="field-grid three">
+        <div>
+          <label>Stage (optional)</label>
+          <select class="edit-stage-input">${stageOptionsHtml(m.stage || '')}</select>
+        </div>
+        <div>
+          <label>Group (optional)</label>
+          <input type="text" class="edit-group-input" value="${escapeAttr(m.group_name || '')}" placeholder="e.g. Group A">
+        </div>
+        <div>
+          <label>Bracket Position (optional)</label>
+          <input type="number" class="edit-bracket-position-input" min="1" value="${m.bracket_position || ''}">
+        </div>
+      </div>
+    `;
+  }
+
+  // ---------- TOURNAMENT-ONLY: TEAM REGISTRATION ----------
+  // competition_teams was an existing, unused table (id, competition_id,
+  // team_id, created_at) before this feature — now also carries is_active
+  // and group_name. Only rendered/used for Tournament competitions.
+  async function loadCompetitionTeams() {
+    const { data, error } = await supabaseClient
+      .from('competition_teams')
+      .select('id, team_id, is_active, group_name')
+      .eq('competition_id', competitionId);
+    if (!error) competitionTeams = data || [];
+  }
+
+  function renderTeamsSectionSlot() {
+    const slot = document.getElementById('teams-section-slot');
+    if (!slot) return;
+    if (!isTournament()) { slot.innerHTML = ''; return; }
+
+    slot.innerHTML = `
+      <div class="card">
+        <h2>Register Teams</h2>
+        <div class="autocomplete-wrap">
+          <input type="text" id="register-team-input" placeholder="Search or type a team name">
+          <div class="autocomplete-list hidden" id="register-team-suggestions"></div>
+        </div>
+        <button id="register-team-btn" class="btn-primary" style="margin-top:0.6rem;">Register Team</button>
+        <span id="register-team-status" class="save-status"></span>
+        <div id="registered-teams-list" style="margin-top:1rem;"></div>
+      </div>
+    `;
+
+    attachAutocomplete(
+      document.getElementById('register-team-input'),
+      document.getElementById('register-team-suggestions'),
+      false,
+    );
+
+    document.getElementById('register-team-btn').addEventListener('click', async () => {
+      const statusEl = document.getElementById('register-team-status');
+      const name = document.getElementById('register-team-input').value.trim();
+      if (!name) { statusEl.textContent = 'Enter a team name.'; statusEl.classList.add('error'); return; }
+
+      try {
+        const teamId = await resolveTeamId(name);
+        if (teamId === undefined) { statusEl.textContent = 'Cancelled.'; return; }
+
+        if (competitionTeams.some(ct => ct.team_id === teamId)) {
+          statusEl.textContent = 'That team is already registered.';
+          statusEl.classList.add('error');
+          return;
+        }
+
+        const { error } = await supabaseClient
+          .from('competition_teams')
+          .insert({ competition_id: competitionId, team_id: teamId, is_active: true });
+        if (error) throw error;
+
+        document.getElementById('register-team-input').value = '';
+        statusEl.textContent = 'Registered ✓';
+        statusEl.classList.remove('error');
+        setTimeout(() => { statusEl.textContent = ''; }, 2500);
+        await loadCompetitionTeams();
+        renderRegisteredTeamsList();
+      } catch (err) {
+        statusEl.textContent = err.message;
+        statusEl.classList.add('error');
+      }
+    });
+
+    renderRegisteredTeamsList();
+  }
+
+  function renderRegisteredTeamsList() {
+    const list = document.getElementById('registered-teams-list');
+    if (!list) return;
+
+    if (!competitionTeams.length) {
+      list.innerHTML = `<div class="empty-msg">No teams registered yet.</div>`;
+      return;
+    }
+
+    list.innerHTML = '';
+    competitionTeams.forEach(ct => {
+      const row = document.createElement('div');
+      row.className = 'competition-card';
+      row.innerHTML = `
+        <div style="flex:1;">
+          <p class="competition-name">${escapeHtml(teamName(ct.team_id))} ${ct.is_active ? '' : '<span style="color:#c0392b; font-weight:600; font-size:0.78rem;">(Deactivated)</span>'}</p>
+          <div style="margin-top:0.4rem;">
+            <label style="font-size:0.75rem;">Group</label><br>
+            <input type="text" class="group-input" value="${escapeAttr(ct.group_name || '')}" placeholder="e.g. Group A" style="max-width:160px;">
+          </div>
+        </div>
+        <div class="item-actions">
+          <button class="btn-secondary toggle-active-btn">${ct.is_active ? 'Deactivate' : 'Reactivate'}</button>
+        </div>
+      `;
+
+      row.querySelector('.group-input').addEventListener('blur', async (e) => {
+        const value = e.target.value.trim() || null;
+        if (value === ct.group_name) return;
+        const { error } = await supabaseClient.from('competition_teams').update({ group_name: value }).eq('id', ct.id);
+        if (!error) ct.group_name = value;
+      });
+
+      row.querySelector('.toggle-active-btn').addEventListener('click', async () => {
+        const { error } = await supabaseClient.from('competition_teams').update({ is_active: !ct.is_active }).eq('id', ct.id);
+        if (error) { alert(error.message); return; }
+        ct.is_active = !ct.is_active;
+        renderRegisteredTeamsList();
+      });
+
+      list.appendChild(row);
+    });
+  }
+
   // ---------- CREATE MATCH ----------
   document.getElementById('create-match-btn').addEventListener('click', async () => {
     const statusEl = document.getElementById('create-match-status');
@@ -267,6 +457,13 @@ export async function competitionDetailView(params, query) {
         payload.team_b_id = teamBId;
       }
 
+      if (isTournament()) {
+        payload.stage = document.getElementById('new-stage-input')?.value || null;
+        payload.group_name = document.getElementById('new-group-input')?.value.trim() || null;
+        const bp = document.getElementById('new-bracket-position-input')?.value;
+        payload.bracket_position = bp ? parseInt(bp, 10) : null;
+      }
+
       const { error } = await supabaseClient.from('matches').insert(payload);
       if (error) throw error;
 
@@ -275,6 +472,11 @@ export async function competitionDetailView(params, query) {
       document.getElementById('new-venue-input').value = '';
       document.getElementById('new-date-input').value = '';
       document.getElementById('new-time-input').value = '';
+      if (isTournament()) {
+        document.getElementById('new-stage-input').value = '';
+        document.getElementById('new-group-input').value = '';
+        document.getElementById('new-bracket-position-input').value = '';
+      }
 
       statusEl.textContent = 'Match added ✓';
       setTimeout(() => { statusEl.textContent = ''; }, 2500);
@@ -444,6 +646,7 @@ export async function competitionDetailView(params, query) {
         </div>
         <div></div>
       </div>
+      ${tournamentFieldsHtmlForEdit(m)}
       <div class="item-actions">
         <button class="btn-primary save-match-btn">Save</button>
         <button class="btn-secondary cancel-match-btn">Cancel</button>
@@ -492,6 +695,13 @@ export async function competitionDetailView(params, query) {
           payload.team_b_id = teamBId;
           payload.opponent_team_id = null;
           payload.is_home = null;
+        }
+
+        if (isTournament()) {
+          payload.stage = card.querySelector('.edit-stage-input')?.value || null;
+          payload.group_name = card.querySelector('.edit-group-input')?.value.trim() || null;
+          const bp = card.querySelector('.edit-bracket-position-input')?.value;
+          payload.bracket_position = bp ? parseInt(bp, 10) : null;
         }
 
         const { error } = await supabaseClient.from('matches').update(payload).eq('id', m.id);
@@ -547,8 +757,8 @@ export async function competitionDetailView(params, query) {
   }
 
   await loadClubName();
-  await loadCompetition();
   await loadTeams();
+  await loadCompetition();
   await loadMatches();
 
   attachAutocomplete(document.getElementById('new-home-input'), document.getElementById('new-home-suggestions'), true);
