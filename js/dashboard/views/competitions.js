@@ -38,7 +38,11 @@ export async function competitionsView() {
       <div class="field-grid">
         <div>
           <label>Type</label>
-          <input type="text" id="new-comp-type" placeholder="e.g. League, Cup, Friendly">
+          <select id="new-comp-type">
+            <option value="League">League</option>
+            <option value="Friendly">Friendly</option>
+            <option value="Tournament">Tournament</option>
+          </select>
         </div>
         <div></div>
       </div>
@@ -67,7 +71,7 @@ export async function competitionsView() {
     const statusEl = document.getElementById('comp-create-status');
     const name = document.getElementById('new-comp-name').value.trim();
     const season = document.getElementById('new-comp-season').value.trim() || null;
-    const type = document.getElementById('new-comp-type').value.trim() || null;
+    const type = document.getElementById('new-comp-type').value;
     const start_date = document.getElementById('new-comp-start').value || null;
     const end_date = document.getElementById('new-comp-end').value || null;
 
@@ -78,7 +82,7 @@ export async function competitionsView() {
 
     document.getElementById('new-comp-name').value = '';
     document.getElementById('new-comp-season').value = '';
-    document.getElementById('new-comp-type').value = '';
+    document.getElementById('new-comp-type').value = 'League';
     document.getElementById('new-comp-start').value = '';
     document.getElementById('new-comp-end').value = '';
 
