@@ -31,7 +31,7 @@ export async function competitionFixturesView(params) {
       .select("id, slug, match_date, match_time, opponent_team_id")
       .eq("competition_id", comp.id)
       .eq("status", "scheduled")
-      .eq("is_internal", false)
+      .eq("is_internal", true)
       .order("match_date", { ascending: true });
     if (error) throw error;
     const matchesWithOpp = await supabase.attachOpponents(data);
