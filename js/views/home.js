@@ -32,7 +32,7 @@ import { renderReportsSection } from "./home/reports-section.js";
 export { getMagujeTeamId, fetchFirstMedia, fetchAllMedia } from "./home/home-data.js";
 export { toExternalMatch, combineDateTime, excerptFrom } from "../utils/format.js";
 
-const AUTO_SCROLL_DELAY_MS = 25000;
+const AUTO_SCROLL_DELAY_MS = 15000;
 
 // Layout-only CSS specific to this file's own skeleton — not shared
 // with any section, so it stays inline here rather than in home-shared.js.
@@ -120,7 +120,7 @@ export async function homeView() {
 
   // Hero, Events, Fixtures, and Spotlight all depend on data fetched
   // once here — no section duplicates a query another section needs.
-  const [fixtures, spotlightItems, heroImageUrl, event] = await Promise.all([
+  const [fixtures, spotlightItems, heroImageUrl, events] = await Promise.all([
     fetchFixturesData(),
     fetchSpotlightData(),
     fetchLatestGalleryImageUrl(),
@@ -134,8 +134,7 @@ export async function homeView() {
   // param, unlike every section below).
   renderHeroSection(root, { ...fixtures, heroImageUrl }, cleanupFns);
 
-  renderEventsSection(root, event);
-
+  registerSection(renderEventsSection(root, events), cleanupFns, autoScrollRegistry);
   registerSection(renderFixturesSection(root, fixtures), cleanupFns, autoScrollRegistry);
   registerSection(renderSpotlightSection(root, spotlightItems), cleanupFns, autoScrollRegistry);
 

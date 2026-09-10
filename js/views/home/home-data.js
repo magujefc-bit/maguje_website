@@ -52,9 +52,6 @@ export async function fetchLatestGalleryImageUrl() {
   return data?.url || null;
 }
 
-// Batch-resolves competition_id → { id, name } the same way
-// supabase.attachOpponents resolves opponent_team_id → team.
-// Local to home-data.js since it's only used here right now.
 async function attachCompetitions(matches) {
   if (!matches.length) return matches;
   const ids = Array.from(new Set(matches.map((m) => m.competition_id).filter(Boolean))).map(String);
@@ -70,15 +67,6 @@ async function attachCompetitions(matches) {
   }));
 }
 
-/*
- * Live match + all matches scheduled today and tomorrow, still
- * showing status "scheduled"/"pending" ones even if their kickoff
- * time has already passed. is_internal must be TRUE for real
- * matches — confirmed against this club's actual data.
- * competition_id is resolved to { id, name } via attachCompetitions
- * above (matches table only stores the id, not the name), so
- * toExternalMatch() can pass it straight to matchCard().
- */
 export async function fetchFixturesData() {
   try {
     const now = new Date();
@@ -135,6 +123,11 @@ function getKickoffTime(match) {
   return Number.isNaN(time) ? 0 : time;
 }
 
+/*
+ * ALL upcoming events within 48 hours, not just the soonest —
+ * events-section.js decides how to render 1 vs many (single card
+ * vs carousel), same pattern as fixtures.
+ */
 export async function fetchEventsData() {
   try {
     const { data, error } = await supabase
@@ -144,27 +137,21 @@ export async function fetchEventsData() {
       .order("event_time", { ascending: true });
 
     if (error) throw error;
-    if (!data?.length) return null;
+    if (!data?.length) return [];
 
     const now = Date.now();
 
-    const upcoming = data
+    return data
       .map((event) => {
         const startAt = combineDateTime(event.event_date, event.event_time);
         const time = startAt ? new Date(startAt).getTime() : NaN;
         return { ...event, startAt, time };
       })
-      .filter((event) => !Number.isNaN(event.time) && event.time >= now)
+      .filter((event) => !Number.isNaN(event.time) && event.time >= now && event.time - now <= EVENT_WINDOW_MS)
       .sort((a, b) => a.time - b.time);
-
-    const next = upcoming[0];
-    if (!next) return null;
-
-    const withinWindow = next.time - now <= EVENT_WINDOW_MS;
-    return withinWindow ? next : null;
   } catch (err) {
     console.error("[home-data] events fetch failed:", err);
-    return null;
+    return [];
   }
 }
 
