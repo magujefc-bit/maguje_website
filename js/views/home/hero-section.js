@@ -8,13 +8,15 @@ injectStyle(
   `
   .home-hero {
     position: relative;
+    aspect-ratio: 16 / 9;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
     background-color: var(--color-pitch-shadow);
     background-size: cover;
     background-position: center;
     border-radius: var(--radius-lg);
     overflow: hidden;
-    min-height: 280px;
-    width: 100%;
   }
 
   .home-hero__overlay {
@@ -32,16 +34,12 @@ injectStyle(
   .home-hero__greeting {
     position: relative;
     z-index: 2;
-    padding: var(--sp-lg) var(--sp-lg) 0;
-  }
-
-  .home-hero__greeting-crest {
-    width: clamp(48px, 12vw, 64px);
-    height: auto;
-    margin-bottom: var(--sp-xs);
+    flex: 0 0 auto;
+    padding: var(--sp-sm) var(--sp-sm) 0;
   }
 
   .home-hero__greeting-title {
+    font-size: var(--fs-md);
     color: var(--color-summit-white);
     margin: 0;
     text-shadow: 0 1px 3px rgba(0,0,0,0.35);
@@ -50,27 +48,31 @@ injectStyle(
   .home-hero-carousel {
     position: relative;
     z-index: 1;
+    flex: 1;
+    min-height: 0;
   }
 
   .home-hero-carousel .carousel__track {
-    height: 160px;
+    height: 100%;
   }
 
   .home-hero-slide {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: var(--sp-md) var(--sp-lg) var(--sp-lg);
+    padding: var(--sp-xs) var(--sp-sm) var(--sp-sm);
     height: 100%;
   }
 
   .home-hero-slide__title {
+    font-size: var(--fs-md);
     color: var(--color-summit-white);
-    margin-bottom: var(--sp-2xs);
+    margin-bottom: var(--sp-3xs);
     text-shadow: 0 1px 3px rgba(0,0,0,0.35);
   }
 
   .home-hero-slide__text {
+    font-size: var(--fs-xs);
     color: rgba(247,249,246,0.9);
     text-shadow: 0 1px 2px rgba(0,0,0,0.3);
   }
@@ -80,13 +82,13 @@ injectStyle(
     align-items: center;
     gap: var(--sp-3xs);
     font-family: var(--font-mono);
-    font-size: var(--fs-xs);
+    font-size: var(--fs-2xs);
     text-transform: uppercase;
     color: var(--color-summit-white);
     background: rgba(0,0,0,0.25);
     padding: 2px var(--sp-2xs);
     border-radius: 999px;
-    margin-bottom: var(--sp-xs);
+    margin-bottom: var(--sp-3xs);
     width: fit-content;
   }
 
@@ -95,11 +97,13 @@ injectStyle(
 );
 
 /*
- * HERO — greeting is static chrome, pinned above the carousel,
- * never part of the sliding track. Carousel rotates: live match
- * slide (if any) + one slide per upcoming match in the array,
- * no time restriction. News, reports, and spotlight are not part
- * of hero rotation — they're their own standalone sections.
+ * HERO — fixed 16:9 box (aspect-ratio, not min-height, so content
+ * can never stretch it taller). No crest — removed entirely per
+ * request. Greeting is a compact single line pinned above the
+ * carousel; carousel fills the remaining height and rotates: live
+ * match slide (if any) + one slide per upcoming match, unlimited
+ * to time. News, reports, and spotlight are not part of hero
+ * rotation — they're their own standalone sections.
  */
 export function renderHeroSection(root, { liveMatch, upcomingMatches, heroImageUrl }, cleanupFns) {
   const heroWrap = root.querySelector('[data-slot="hero-wrap"]');
@@ -118,8 +122,8 @@ export function renderHeroSection(root, { liveMatch, upcomingMatches, heroImageU
   if (!slides.length) {
     slides.push(`
       <div class="home-hero-slide">
-        <h2 class="text-display-md home-hero-slide__title">Rooted in the community</h2>
-        <p class="text-body-sm home-hero-slide__text">Playing for the ridge.</p>
+        <h2 class="home-hero-slide__title">Rooted in the community</h2>
+        <p class="home-hero-slide__text">Playing for the ridge.</p>
       </div>
     `);
   }
@@ -130,8 +134,7 @@ export function renderHeroSection(root, { liveMatch, upcomingMatches, heroImageU
     <div class="home-hero"${bgStyle}>
       <div class="home-hero__overlay"></div>
       <div class="home-hero__greeting">
-        <img src="/assets/maguje-crest.png" alt="" class="home-hero__greeting-crest">
-        <h1 class="text-display-lg home-hero__greeting-title">${getGreeting()}, welcome to Maguje FC</h1>
+        <h1 class="home-hero__greeting-title">${getGreeting()}, welcome to Maguje FC</h1>
       </div>
       <div class="home-hero-carousel carousel" data-slot="hero-carousel">
         <div class="carousel__track" data-track>
@@ -152,8 +155,8 @@ function liveSlide(match) {
   return `
     <div class="home-hero-slide">
       <span class="home-hero-slide__badge home-hero-slide__badge--live">${liveIndicator("Live")}</span>
-      <h2 class="text-display-md home-hero-slide__title">Maguje is playing ${escapeHtml(opponentName)}${venueBit}</h2>
-      <p class="text-body-sm home-hero-slide__text">Don't miss live updates for this match.</p>
+      <h2 class="home-hero-slide__title">Maguje is playing ${escapeHtml(opponentName)}${venueBit}</h2>
+      <p class="home-hero-slide__text">Don't miss live updates for this match.</p>
     </div>
   `;
 }
@@ -167,8 +170,8 @@ function upcomingSlide(match) {
     : "soon";
   return `
     <div class="home-hero-slide">
-      <h2 class="text-display-md home-hero-slide__title">Maguje will play ${escapeHtml(opponentName)}${venueBit}, at ${kickoffLabel}</h2>
-      <p class="text-body-sm home-hero-slide__text">Come support our boys — live updates might also be available, stay tuned.</p>
+      <h2 class="home-hero-slide__title">Maguje will play ${escapeHtml(opponentName)}${venueBit}, at ${kickoffLabel}</h2>
+      <p class="home-hero-slide__text">Come support our boys — live updates might also be available, stay tuned.</p>
     </div>
   `;
 }

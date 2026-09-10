@@ -32,7 +32,7 @@ import { renderReportsSection } from "./home/reports-section.js";
 export { getMagujeTeamId, fetchFirstMedia, fetchAllMedia } from "./home/home-data.js";
 export { toExternalMatch, combineDateTime, excerptFrom } from "../utils/format.js";
 
-const AUTO_SCROLL_DELAY_MS = 15000;
+const AUTO_SCROLL_DELAY_MS = 30000;
 
 // Layout-only CSS specific to this file's own skeleton — not shared
 // with any section, so it stays inline here rather than in home-shared.js.
