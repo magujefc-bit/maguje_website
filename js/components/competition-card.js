@@ -1,53 +1,16 @@
 import { injectStyle } from '../utils/inject-style.js';
-import { lazyImage } from './lazy-image.js';
+import { shareBar } from './controls.js';
 
 injectStyle('competition-card', `
-  .competition-badge {
-    width: 28px;
-    height: 28px;
-    flex-shrink: 0;
-  }
-
-  .competition-badge--lg {
-    width: 48px;
-    height: 48px;
-  }
-
-  .competition-badge-placeholder {
-    width: 48px;
-    height: 48px;
-    flex: 0 0 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: var(--color-line);
-    color: rgba(16,36,26,0.5);
-    font-family: var(--font-mono);
-    font-size: var(--fs-xs);
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-
-  .competition-badge-placeholder--sm {
-    width: 28px;
-    height: 28px;
-    flex-basis: 28px;
-    font-size: 9px;
-  }
-
   .competition-card {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: var(--sp-xs);
-    text-align: center;
+    gap: 2px;
     background: var(--color-summit-white);
     border: 1px solid var(--color-line);
     border-radius: var(--radius-md);
-    padding: var(--sp-md);
-    transition:
-      border-color var(--dur-fast) var(--ease-standard);
+    padding: var(--sp-sm) var(--sp-md);
+    transition: border-color var(--dur-fast) var(--ease-standard);
   }
 
   .competition-card:hover {
@@ -66,71 +29,33 @@ injectStyle('competition-card', `
   }
 
   .competition-header {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-sm);
     padding-block: var(--sp-md);
     border-bottom: 1px solid var(--color-line);
   }
 
   .competition-header__name {
-    font-size: var(--fs-xl);
+    font-size: var(--fs-lg);
   }
 
   .competition-header__meta {
     font-size: var(--fs-sm);
     color: rgba(16,36,26,0.6);
   }
-`);
 
-export function competitionBadge(comp, { size = 'default' } = {}) {
-  const isLarge = size === 'lg';
-
-  const sizeClass = isLarge
-    ? 'competition-badge--lg'
-    : '';
-
-  /*
-   * Competitions currently have no badge/logo column.
-   *
-   * Do NOT call lazyImage() when there is no image.
-   * lazyImage() creates an aspect-ratio container, which was
-   * causing the large empty block on mobile.
-   */
-  if (!comp?.badgeUrl) {
-    return `
-      <div
-        class="competition-badge-placeholder ${
-          isLarge ? '' : 'competition-badge-placeholder--sm'
-        }"
-        aria-hidden="true"
-      >
-        FC
-      </div>
-    `;
+  .competition-header .share-bar {
+    margin-top: var(--sp-xs);
   }
-
-  return lazyImage({
-    src: comp.badgeUrl,
-    alt: comp.name,
-    aspect: 'square',
-    className: `competition-badge ${sizeClass}`,
-  });
-}
+`);
 
 export function competitionCard(comp) {
   return `
     <a href="/competitions/${comp.slug}" class="competition-card">
-      ${competitionBadge(comp, { size: 'lg' })}
+      <div class="competition-card__name">
+        ${comp.name}
+      </div>
 
-      <div>
-        <div class="competition-card__name">
-          ${comp.name}
-        </div>
-
-        <div class="competition-card__season">
-          ${comp.season || ''}
-        </div>
+      <div class="competition-card__season">
+        ${comp.season || ''}
       </div>
     </a>
   `;
@@ -139,18 +64,16 @@ export function competitionCard(comp) {
 export function competitionHeader(comp) {
   return `
     <div class="competition-header">
-      ${competitionBadge(comp, { size: 'lg' })}
+      <h1 class="competition-header__name">
+        ${comp.name}
+      </h1>
 
-      <div>
-        <h1 class="competition-header__name">
-          ${comp.name}
-        </h1>
+      <p class="competition-header__meta">
+        ${comp.season || ''}
+        ${comp.teamCount ? ` · ${comp.teamCount} teams` : ''}
+      </p>
 
-        <p class="competition-header__meta">
-          ${comp.season || ''}
-          ${comp.teamCount ? ` · ${comp.teamCount} teams` : ''}
-        </p>
-      </div>
+      ${comp.shareUrl ? shareBar(comp.shareUrl, comp.name) : ''}
     </div>
   `;
 }

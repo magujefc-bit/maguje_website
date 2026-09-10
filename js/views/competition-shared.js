@@ -8,10 +8,8 @@ injectStyle('competition-shared', `
   .competition-subnav__link--active { color: var(--color-ridge-green); border-bottom-color: var(--color-ridge-green); }
 `);
 
-// competitions now has a real slug column (added via migration + auto-gen trigger).
-// No badge/logo column exists in this schema, so competitionHeaderBlock omits it.
 export async function fetchCompetition(slug) {
-  const { data, error } = await supabase.from('competitions').select('id, slug, name, season, type').eq('slug', slug).maybeSingle();
+  const { data, error } = await supabase.from('competitions').select('id, slug, name, season, type, start_date, end_date').eq('slug', slug).maybeSingle();
   if (error) throw error;
   if (!data) return null;
 
@@ -20,7 +18,8 @@ export async function fetchCompetition(slug) {
 }
 
 export function competitionHeaderBlock(comp) {
-  return competitionHeader({ name: comp.name, season: comp.season, badgeUrl: null, teamCount: comp.teamCount });
+  const shareUrl = comp.slug ? window.location.origin + '/competitions/' + comp.slug : null;
+  return competitionHeader({ name: comp.name, season: comp.season, teamCount: comp.teamCount, shareUrl });
 }
 
 export function competitionSubNav(slug, activeTab, type) {
