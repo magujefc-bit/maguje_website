@@ -2,6 +2,7 @@ import { supabase } from '../supabase-client.js';
 import { viewContainer } from '../view-container.js';
 import { states } from '../components/states.js';
 import { fetchCompetition, competitionHeaderBlock, competitionSubNav, notFoundBlock } from './competition-shared.js';
+import { bindShareBar } from '../components/controls.js';
 import { injectStyle } from '../utils/inject-style.js';
 
 injectStyle('competition-player-stats', `
@@ -27,6 +28,7 @@ export async function competitionPlayerStatisticsView(params) {
 
     if (!statRows.length) {
       await viewContainer.render(`<div class="container">${competitionHeaderBlock(comp)}${competitionSubNav(slug, 'player-statistics')}<div style="padding-bottom: var(--sp-2xl);">${states.empty({ message: 'No player statistics available yet.' })}</div></div>`);
+      bindShareBar(root);
       return { cleanup: null };
     }
 
@@ -42,6 +44,7 @@ export async function competitionPlayerStatisticsView(params) {
         ${competitionSubNav(slug, 'player-statistics')}
         <div style="padding-bottom: var(--sp-2xl);">${renderTable(rows)}</div>
       </div>`);
+    bindShareBar(root);
   } catch (err) {
     console.error('[competition-player-statistics] load failed:', err);
     viewContainer.renderError('Could not load player statistics.', () => competitionPlayerStatisticsView(params));

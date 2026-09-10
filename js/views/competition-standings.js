@@ -2,9 +2,10 @@ import { supabase } from '../supabase-client.js';
 import { viewContainer } from '../view-container.js';
 import { skeletons } from '../components/skeletons.js';
 import { states } from '../components/states.js';
-import { standingsTable } from '../components/standings-table.js';
+import { standingsTable, bindStandingsScroll } from '../components/standings-table.js';
 import { fetchCompetition, competitionHeaderBlock, competitionSubNav, notFoundBlock } from './competition-shared.js';
 import { observeLazyImages } from '../components/lazy-image.js';
+import { bindShareBar } from '../components/controls.js';
 
 const STAGE_LABELS = {
   round_of_32: 'Round of 32',
@@ -15,6 +16,23 @@ const STAGE_LABELS = {
   final: 'Final',
 };
 const KNOCKOUT_STAGE_ORDER = ['round_of_32', 'round_of_16', 'quarterfinal', 'semifinal', 'third_place', 'final'];
+
+function toStandingsRow(r) {
+  return {
+    position: r.position,
+    teamId: r.team_id,
+    teamName: r.team_name,
+    crestUrl: r.crest_url,
+    played: r.played,
+    won: r.won,
+    drawn: r.drawn,
+    lost: r.lost,
+    goalsFor: r.goals_for,
+    goalsAgainst: r.goals_against,
+    goalDifference: r.goal_difference,
+    points: r.points,
+  };
+}
 
 export async function competitionStandingsView(params) {
   const { slug } = params;
@@ -32,6 +50,7 @@ export async function competitionStandingsView(params) {
           ${competitionSubNav(slug, 'standings', comp.type)}
           <div data-slot="table">${states.empty({ message: 'Standings aren\u2019t tracked for friendly competitions.' })}</div>
         </div>`);
+      bindShareBar(root);
       return { cleanup: null };
     }
 
@@ -40,17 +59,19 @@ export async function competitionStandingsView(params) {
       return { cleanup: null };
     }
 
-    // League — unchanged from before this feature existed.
-    const { data, error } = await supabase.from('v_standings').select('team_id, team_name, crest_url, played, won, drawn, lost, points, position').eq('competition_id', comp.id).order('position', { ascending: true });
+    // League — unchanged from before this feature existed, plus goals_for/goals_against/goal_difference.
+    const { data, error } = await supabase.from('v_standings').select('team_id, team_name, crest_url, played, won, drawn, lost, goals_for, goals_against, goal_difference, points, position').eq('competition_id', comp.id).order('position', { ascending: true });
     if (error) throw error;
 
     await viewContainer.render(`
       <div class="container">
         ${competitionHeaderBlock(comp)}
         ${competitionSubNav(slug, 'standings', comp.type)}
-        <div data-slot="table">${data.length ? standingsTable(data.map(r => ({ position: r.position, teamId: r.team_id, teamName: r.team_name, crestUrl: r.crest_url, played: r.played, won: r.won, drawn: r.drawn, lost: r.lost, points: r.points }))) : states.empty({ message: 'Standings not available yet.' })}</div>
+        <div data-slot="table">${data.length ? standingsTable(data.map(toStandingsRow)) : states.empty({ message: 'Standings not available yet.' })}</div>
       </div>`);
     observeLazyImages(root);
+    bindShareBar(root);
+    bindStandingsScroll(root);
   } catch (err) {
     console.error('[competition-standings] load failed:', err);
     viewContainer.renderError('Could not load standings.', () => competitionStandingsView(params));
@@ -61,7 +82,7 @@ export async function competitionStandingsView(params) {
 async function renderTournamentStandings(root, comp, slug) {
   try {
     const [{ data: groupRows, error: groupErr }, { data: knockoutMatches, error: knockoutErr }] = await Promise.all([
-      supabase.from('v_group_standings').select('group_name, team_id, team_name, crest_url, played, won, drawn, lost, points, position').eq('competition_id', comp.id).order('group_name', { ascending: true }).order('position', { ascending: true }),
+      supabase.from('v_group_standings').select('group_name, team_id, team_name, crest_url, played, won, drawn, lost, goals_for, goals_against, goal_difference, points, position').eq('competition_id', comp.id).order('group_name', { ascending: true }).order('position', { ascending: true }),
       supabase.from('matches').select('id, slug, stage, bracket_position, status, our_score, opponent_score, team_a_score, team_b_score, is_internal, opponent_team_id, team_a_id, team_b_id').eq('competition_id', comp.id).not('stage', 'is', null).neq('stage', 'group').order('bracket_position', { ascending: true }),
     ]);
     if (groupErr) throw groupErr;
@@ -79,7 +100,7 @@ async function renderTournamentStandings(root, comp, slug) {
       ? groupNames.map(name => `
           <div class="tournament-group-block">
             <h3 class="tournament-group-block__title">${name}</h3>
-            ${standingsTable(groups[name].map(r => ({ position: r.position, teamId: r.team_id, teamName: r.team_name, crestUrl: r.crest_url, played: r.played, won: r.won, drawn: r.drawn, lost: r.lost, points: r.points })))}
+            ${standingsTable(groups[name].map(toStandingsRow))}
           </div>
         `).join('')
       : '';
@@ -114,6 +135,8 @@ async function renderTournamentStandings(root, comp, slug) {
         </div>
       </div>`);
     observeLazyImages(root);
+    bindShareBar(root);
+    bindStandingsScroll(root);
   } catch (err) {
     console.error('[competition-standings] tournament load failed:', err);
     viewContainer.renderError('Could not load standings.', () => competitionStandingsView({ slug }));

@@ -10,6 +10,7 @@ import {
   notFoundBlock,
 } from "./competition-shared.js";
 import { observeLazyImages } from "../components/lazy-image.js";
+import { bindShareBar } from "../components/controls.js";
 import { toExternalMatch } from "./home.js";
 
 export async function competitionResultsView(params) {
@@ -45,6 +46,7 @@ export async function competitionResultsView(params) {
         <div class="flex flex-col gap-sm" style="padding-bottom: var(--sp-2xl);" data-slot="list">${data.length ? matchesWithOpp.map((m) => matchCard({ ...toExternalMatch({ ...m, status: "completed" }), competition: { id: comp.id, name: comp.name } })).join("") : states.empty({ message: "No results yet in this competition." })}</div>
       </div>`);
     observeLazyImages(root);
+    bindShareBar(root);
   } catch (err) {
     console.error("[competition-results] load failed:", err);
     viewContainer.renderError("Could not load results.", () =>

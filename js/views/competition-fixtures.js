@@ -10,6 +10,7 @@ import {
   notFoundBlock,
 } from "./competition-shared.js";
 import { observeLazyImages } from "../components/lazy-image.js";
+import { bindShareBar } from "../components/controls.js";
 import { injectStyle } from "../utils/inject-style.js";
 import { toExternalMatch } from "./home.js";
 
@@ -87,6 +88,7 @@ export async function competitionFixturesView(params) {
         ${playedSection}
       </div>`);
     observeLazyImages(root);
+    bindShareBar(root);
   } catch (err) {
     console.error("[competition-fixtures] load failed:", err);
     viewContainer.renderError("Could not load fixtures.", () =>
