@@ -72,7 +72,7 @@ export async function headToHeadDetailView(params) {
       )
       .eq("opponent_team_id", teamId)
       .eq("status", "completed")
-      .eq("is_internal", false)
+      .eq("is_internal", true)
       .order("match_date", { ascending: false });
 
     if (mErr) throw mErr;

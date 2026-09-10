@@ -33,7 +33,7 @@ export async function competitionResultsView(params) {
       )
       .eq("competition_id", comp.id)
       .eq("status", "completed")
-      .eq("is_internal", false)
+      .eq("is_internal", true)
       .order("match_date", { ascending: false });
     if (error) throw error;
     const matchesWithOpp = await supabase.attachOpponents(data);

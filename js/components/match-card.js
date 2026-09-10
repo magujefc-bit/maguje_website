@@ -24,6 +24,7 @@ injectStyle('match-card', `
  * page. Defaults to the previous behaviour (/matches/:slug) when
  * omitted, so every other existing call site is unaffected.
  */
+
 export function matchCard(match, options = {}) {
   const status = match.status || 'scheduled';
   const isLive = status === 'live';
