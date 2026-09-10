@@ -96,43 +96,23 @@ injectStyle(
 
 /*
  * HERO — greeting is static chrome, pinned above the carousel,
- * never part of the sliding track. Carousel rotates only live +
- * upcoming match slides, with no time restriction on "upcoming".
- * News, reports, and spotlight are no longer part of hero rotation
- * — they render as their own standalone sections further down
- * the page.
+ * never part of the sliding track. Carousel rotates: live match
+ * slide (if any) + one slide per upcoming match in the array,
+ * no time restriction. News, reports, and spotlight are not part
+ * of hero rotation — they're their own standalone sections.
  */
-export function renderHeroSection(root, { liveMatch, nextUpcoming, heroImageUrl }, cleanupFns) {
+export function renderHeroSection(root, { liveMatch, upcomingMatches, heroImageUrl }, cleanupFns) {
   const heroWrap = root.querySelector('[data-slot="hero-wrap"]');
   if (!heroWrap) return;
 
   const slides = [];
 
   if (liveMatch) {
-    const opponentName = liveMatch.opponent?.name || "our opponents";
-    const venueBit = liveMatch.is_home === false ? ` at ${liveMatch.venue || opponentName + "'s ground"}` : "";
-    slides.push(`
-      <div class="home-hero-slide">
-        <span class="home-hero-slide__badge home-hero-slide__badge--live">${liveIndicator("Live")}</span>
-        <h2 class="text-display-md home-hero-slide__title">Maguje is playing ${escapeHtml(opponentName)}${venueBit}</h2>
-        <p class="text-body-sm home-hero-slide__text">Don't miss live updates for this match.</p>
-      </div>
-    `);
+    slides.push(liveSlide(liveMatch));
   }
 
-  if (nextUpcoming) {
-    const opponentName = nextUpcoming.opponent?.name || "our opponents";
-    const venueBit = nextUpcoming.is_home === false ? ` at ${nextUpcoming.venue || opponentName + "'s ground"}` : "";
-    const kickoff = combineDateTime(nextUpcoming.match_date, nextUpcoming.match_time);
-    const kickoffLabel = kickoff
-      ? new Date(kickoff).toLocaleString("en-KE", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Nairobi" })
-      : "soon";
-    slides.push(`
-      <div class="home-hero-slide">
-        <h2 class="text-display-md home-hero-slide__title">Maguje will play ${escapeHtml(opponentName)}${venueBit}, at ${kickoffLabel}</h2>
-        <p class="text-body-sm home-hero-slide__text">Come support our boys — live updates might also be available, stay tuned.</p>
-      </div>
-    `);
+  for (const match of upcomingMatches || []) {
+    slides.push(upcomingSlide(match));
   }
 
   if (!slides.length) {
@@ -164,6 +144,33 @@ export function renderHeroSection(root, { liveMatch, nextUpcoming, heroImageUrl 
   const carouselRoot = heroWrap.querySelector('[data-slot="hero-carousel"]');
   const instance = initCarousel(carouselRoot);
   cleanupFns.push(() => instance.destroy());
+}
+
+function liveSlide(match) {
+  const opponentName = match.opponent?.name || "our opponents";
+  const venueBit = match.is_home === false ? ` at ${match.venue || opponentName + "'s ground"}` : "";
+  return `
+    <div class="home-hero-slide">
+      <span class="home-hero-slide__badge home-hero-slide__badge--live">${liveIndicator("Live")}</span>
+      <h2 class="text-display-md home-hero-slide__title">Maguje is playing ${escapeHtml(opponentName)}${venueBit}</h2>
+      <p class="text-body-sm home-hero-slide__text">Don't miss live updates for this match.</p>
+    </div>
+  `;
+}
+
+function upcomingSlide(match) {
+  const opponentName = match.opponent?.name || "our opponents";
+  const venueBit = match.is_home === false ? ` at ${match.venue || opponentName + "'s ground"}` : "";
+  const kickoff = combineDateTime(match.match_date, match.match_time);
+  const kickoffLabel = kickoff
+    ? new Date(kickoff).toLocaleString("en-KE", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Nairobi" })
+    : "soon";
+  return `
+    <div class="home-hero-slide">
+      <h2 class="text-display-md home-hero-slide__title">Maguje will play ${escapeHtml(opponentName)}${venueBit}, at ${kickoffLabel}</h2>
+      <p class="text-body-sm home-hero-slide__text">Come support our boys — live updates might also be available, stay tuned.</p>
+    </div>
+  `;
 }
 
 function getGreeting() {

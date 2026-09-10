@@ -1,8 +1,10 @@
 import { matchCard } from "../../components/match-card.js";
 import { liveIndicator } from "../../components/controls.js";
 import { observeLazyImages } from "../../components/lazy-image.js";
+import { initCarousel } from "../../components/carousel.js";
 import { injectStyle } from "../../utils/inject-style.js";
 import { combineDateTime, escapeHtml, toExternalMatch } from "../../utils/format.js";
+import { carouselNavButtons, wireCarouselNav } from "./home-shared.js";
 
 injectStyle(
   "fixtures-section",
@@ -59,27 +61,27 @@ injectStyle(
 `,
 );
 
-// Match is eligible for this section once it's within 48 hours of
-// kickoff, up until 10 minutes before — after that it's assumed to
-// go live and the live card takes over instead.
-const WINDOW_START_MS = 48 * 60 * 60 * 1000;
-const WINDOW_END_MS = 10 * 60 * 1000;
-
 /*
- * FIXTURES SECTION — centered countdown pill + upcoming card
- * (only when the next match is within 48h) and/or a live match
- * card. Renders nothing at all if neither condition is met.
- * Returns a cleanup fn (clears the kickoff interval) when one is
- * needed, or undefined otherwise — same contract as every other
- * section, so home.js can push it into cleanupFns unconditionally.
+ * FIXTURES SECTION.
+ * - liveMatch: shown on its own card if present, always. Not part
+ *   of the upcoming carousel — live has no "next slide" concept.
+ * - upcomingMatches: 0 → nothing rendered below live; 1 → single
+ *   card, no nav buttons, excluded from the shared auto-scroll;
+ *   2+ → carousel with nav buttons, included in auto-scroll.
+ * - Each upcoming card gets its own countdown pill, but only if
+ *   that match's kickoff hasn't passed yet.
+ *
+ * Returns { cleanup, advance } — advance is only present when
+ * there are 2+ upcoming matches (a real carousel to advance).
+ * Returns undefined if there's nothing to render at all.
  */
-export function renderFixturesSection(root, { liveMatch, nextUpcoming }) {
+export function renderFixturesSection(root, { liveMatch, upcomingMatches }) {
   const section = root.querySelector('[data-slot="fixtures-section"]');
   if (!section) return undefined;
 
-  const upcomingWithinWindow = isWithinWindow(nextUpcoming) ? nextUpcoming : null;
+  const upcoming = upcomingMatches || [];
 
-  if (!liveMatch && !upcomingWithinWindow) {
+  if (!liveMatch && !upcoming.length) {
     section.hidden = true;
     section.innerHTML = "";
     return undefined;
@@ -96,57 +98,88 @@ export function renderFixturesSection(root, { liveMatch, nextUpcoming }) {
     `
     : "";
 
-  const upcomingBlock = upcomingWithinWindow
-    ? `
-      <div data-slot="kickoff-toast"></div>
-      <div class="home-fixture-card-wrap">
-        <div class="home-fixture-card-wrap__label">Upcoming</div>
-        ${matchCard(toExternalMatch({ ...upcomingWithinWindow, status: upcomingWithinWindow.status || "scheduled" }), { href: "/fixtures" })}
-      </div>
-    `
-    : "";
-
-  section.innerHTML = liveBlock + upcomingBlock;
-
+  section.innerHTML = liveBlock + buildUpcomingBlock(upcoming);
   observeLazyImages(section);
 
-  if (upcomingWithinWindow) {
-    return startKickoffToast(section, upcomingWithinWindow);
+  const pillCleanups = upcoming.map((match, i) => startKickoffToast(section, match, i));
+
+  let carouselInstance = null;
+  if (upcoming.length > 1) {
+    const wrapEl = section.querySelector('[data-slot="fixtures-carousel-wrap"]');
+    const carouselRoot = section.querySelector('[data-slot="fixtures-carousel"]');
+    carouselInstance = initCarousel(carouselRoot, { autoplay: false });
+    wireCarouselNav(wrapEl, carouselInstance);
   }
 
-  return undefined;
+  return {
+    cleanup() {
+      pillCleanups.forEach((fn) => fn && fn());
+      if (carouselInstance) carouselInstance.destroy();
+    },
+    advance: carouselInstance ? carouselInstance.advance : undefined,
+  };
 }
 
-function isWithinWindow(match) {
+function buildUpcomingBlock(upcoming) {
+  if (!upcoming.length) return "";
+
+  if (upcoming.length === 1) {
+    return singleUpcomingCard(upcoming[0], 0);
+  }
+
+  const slides = upcoming.map((match, i) => `<div class="carousel__slide">${singleUpcomingCard(match, i)}</div>`).join("");
+
+  return `
+    <div class="home-carousel-wrap" data-slot="fixtures-carousel-wrap">
+      ${carouselNavButtons()}
+      <div class="carousel" data-slot="fixtures-carousel">
+        <div class="carousel__track" data-track>${slides}</div>
+      </div>
+    </div>
+  `;
+}
+
+function singleUpcomingCard(match, index) {
+  return `
+    <div class="home-fixture-card-wrap">
+      <div data-slot="kickoff-toast-${index}"></div>
+      <div class="home-fixture-card-wrap__label">Upcoming</div>
+      ${matchCard(toExternalMatch({ ...match, status: match.status || "scheduled" }), { href: "/fixtures" })}
+    </div>
+  `;
+}
+
+function isFutureKickoff(match) {
   const kickoff = combineDateTime(match?.match_date, match?.match_time);
   if (!kickoff) return false;
-  const diff = new Date(kickoff).getTime() - Date.now();
-  return diff <= WINDOW_START_MS && diff > WINDOW_END_MS;
+  return new Date(kickoff).getTime() - Date.now() > 0;
 }
 
-// Returns a cleanup fn that clears the interval it starts.
-function startKickoffToast(section, match) {
-  const slot = section.querySelector('[data-slot="kickoff-toast"]');
+// Returns a cleanup fn that clears the interval it starts, or
+// undefined if this match's kickoff has already passed (no pill).
+function startKickoffToast(section, match, index) {
+  const slot = section.querySelector(`[data-slot="kickoff-toast-${index}"]`);
   if (!slot) return undefined;
 
-  const kickoffIso = combineDateTime(match.match_date, match.match_time);
-  const target = kickoffIso ? new Date(kickoffIso).getTime() : NaN;
-
-  if (Number.isNaN(target)) {
+  if (!isFutureKickoff(match)) {
     slot.innerHTML = "";
     return undefined;
   }
 
+  const kickoffIso = combineDateTime(match.match_date, match.match_time);
+  const target = new Date(kickoffIso).getTime();
+
   function render() {
     const diff = target - Date.now();
-    const inWindow = diff <= WINDOW_START_MS && diff > WINDOW_END_MS;
-    slot.innerHTML = inWindow
-      ? `<div class="home-kickoff-toast">
-          <span>Kickoff in</span>
-          <span class="home-kickoff-toast__time">${formatKickoffToastTime(diff)}</span>
-          <span class="home-kickoff-toast__opp">vs ${escapeHtml(match.opponent?.name || "TBD")}</span>
-        </div>`
-      : "";
+    if (diff <= 0) {
+      slot.innerHTML = "";
+      return;
+    }
+    slot.innerHTML = `<div class="home-kickoff-toast">
+        <span>Kickoff in</span>
+        <span class="home-kickoff-toast__time">${formatKickoffToastTime(diff)}</span>
+        <span class="home-kickoff-toast__opp">vs ${escapeHtml(match.opponent?.name || "TBD")}</span>
+      </div>`;
   }
 
   render();

@@ -4,29 +4,21 @@
  * Used across home/ sections and other views.
  */
 
-/**
- * Strips HTML tags from a body string and truncates to `len` chars,
- * appending an ellipsis if truncated.
- */
 export function excerptFrom(body, len = 140) {
   if (!body) return "";
   const plain = body.replace(/<[^>]+>/g, "");
   return plain.length > len ? plain.slice(0, len) + "…" : plain;
 }
 
-/**
- * Combines a date string and time string into a single ISO-ish
- * datetime string. Defaults to midnight if no time is given.
- */
 export function combineDateTime(date, time) {
   if (!date) return null;
   return `${date}T${time || "00:00:00"}`;
 }
 
 /**
- * Transforms a raw `matches` row (with opponent already attached)
- * into the shape matchCard() expects: home/away resolved based on
- * is_home, with Maguje FC's own crest/name filled in on our side.
+ * Transforms a raw `matches` row (with opponent AND competition
+ * already attached — see home-data.js's attachCompetitions) into
+ * the shape matchCard() expects.
  */
 export function toExternalMatch(row) {
   const isAway = row.is_home === false;
@@ -46,12 +38,10 @@ export function toExternalMatch(row) {
     awayTeam: isAway
       ? { name: "Maguje FC", shortName: "Maguje", crestUrl: "/assets/maguje-crest.png" }
       : { name: row.opponent?.name || "TBD", shortName: row.opponent?.name, crestUrl: row.opponent?.logo_url },
+    competition: row.competition || null,
   };
 }
 
-/**
- * Escapes a value for safe interpolation into HTML template strings.
- */
 export function escapeHtml(value) {
   if (value === null || value === undefined) return "";
   return String(value)
@@ -61,4 +51,3 @@ export function escapeHtml(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
-

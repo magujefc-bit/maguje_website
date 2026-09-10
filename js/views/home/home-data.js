@@ -1,12 +1,6 @@
 import { supabase } from "../../supabase-client.js";
 import { combineDateTime, toExternalMatch } from "../../utils/format.js";
 
-/**
- * All Supabase data-fetching for the home page.
- * No DOM access — every function here returns plain data.
- * Section files call these, then render what they get back.
- */
-
 const MAX_FIXTURES = 4;
 const EVENT_WINDOW_MS = 48 * 60 * 60 * 1000;
 
@@ -48,11 +42,6 @@ export async function fetchAllMedia(postType, postId) {
   return (data || []).map((row) => row.media?.url).filter(Boolean);
 }
 
-/*
- * Latest gallery upload — same table + ordering as the Gallery
- * page itself, so the hero background stays in sync with new
- * uploads automatically.
- */
 export async function fetchLatestGalleryImageUrl() {
   const { data } = await supabase
     .from("media_library")
@@ -63,15 +52,38 @@ export async function fetchLatestGalleryImageUrl() {
   return data?.url || null;
 }
 
+// Batch-resolves competition_id → { id, name } the same way
+// supabase.attachOpponents resolves opponent_team_id → team.
+// Local to home-data.js since it's only used here right now.
+async function attachCompetitions(matches) {
+  if (!matches.length) return matches;
+  const ids = Array.from(new Set(matches.map((m) => m.competition_id).filter(Boolean))).map(String);
+  if (!ids.length) return matches.map((m) => ({ ...m, competition: null }));
+
+  const { data: competitions, error } = await supabase.from("competitions").select("id, name").in("id", ids);
+  if (error) throw error;
+
+  const map = new Map((competitions || []).map((c) => [String(c.id), c]));
+  return matches.map((m) => ({
+    ...m,
+    competition: map.get(String(m.competition_id)) || null,
+  }));
+}
+
 /*
- * Live match + next upcoming match, unfiltered by time window.
- * Hero uses both unconditionally. Fixtures-section applies its
- * own 48h check against `nextUpcoming` before deciding to render
- * the countdown pill.
+ * Live match + all matches scheduled today and tomorrow, still
+ * showing status "scheduled"/"pending" ones even if their kickoff
+ * time has already passed. is_internal must be TRUE for real
+ * matches — confirmed against this club's actual data.
+ * competition_id is resolved to { id, name } via attachCompetitions
+ * above (matches table only stores the id, not the name), so
+ * toExternalMatch() can pass it straight to matchCard().
  */
 export async function fetchFixturesData() {
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    const tomorrow = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
 
     const [
       { data: live, error: liveErr },
@@ -79,27 +91,29 @@ export async function fetchFixturesData() {
     ] = await Promise.all([
       supabase
         .from("matches")
-        .select(`id, slug, match_date, match_time, our_score, opponent_score, opponent_team_id, is_home`)
+        .select(`id, slug, match_date, match_time, our_score, opponent_score, opponent_team_id, is_home, competition_id`)
         .eq("is_live", true)
         .eq("is_internal", true)
         .limit(1),
       supabase
         .from("matches")
-        .select(`id, slug, match_date, match_time, our_score, opponent_score, opponent_team_id, is_home, status, venue`)
+        .select(`id, slug, match_date, match_time, our_score, opponent_score, opponent_team_id, is_home, status, venue, competition_id`)
         .eq("is_internal", true)
         .in("status", ["scheduled", "pending"])
         .gte("match_date", today)
+        .lte("match_date", tomorrow)
         .order("match_date", { ascending: true })
-        .order("match_time", { ascending: true })
-        .limit(MAX_FIXTURES),
+        .order("match_time", { ascending: true }),
     ]);
 
     if (liveErr || upcomingErr) throw (liveErr || upcomingErr);
 
     const allFetched = [...(live || []), ...(upcoming || [])];
     const uniqueFetched = Array.from(new Map(allFetched.map((m) => [m.id, m])).values());
+
     const withOpp = uniqueFetched.length ? await supabase.attachOpponents(uniqueFetched) : [];
-    const mapById = new Map(withOpp.map((m) => [m.id, m]));
+    const withCompetition = await attachCompetitions(withOpp);
+    const mapById = new Map(withCompetition.map((m) => [m.id, m]));
 
     const liveMatch = live?.length ? mapById.get(live[0].id) || live[0] : null;
 
@@ -107,12 +121,10 @@ export async function fetchFixturesData() {
       .map((m) => mapById.get(m.id) || m)
       .sort((a, b) => getKickoffTime(a) - getKickoffTime(b));
 
-    const nextUpcoming = upcomingMatches[0] || null;
-
-    return { liveMatch, nextUpcoming };
+    return { liveMatch, upcomingMatches };
   } catch (err) {
     console.error("[home-data] fixtures fetch failed:", err);
-    return { liveMatch: null, nextUpcoming: null };
+    return { liveMatch: null, upcomingMatches: [] };
   }
 }
 
@@ -123,11 +135,6 @@ function getKickoffTime(match) {
   return Number.isNaN(time) ? 0 : time;
 }
 
-/*
- * Next upcoming event, but only if it falls within 48 hours —
- * otherwise returns null so events-section.js can skip rendering
- * entirely without needing its own time-window logic.
- */
 export async function fetchEventsData() {
   try {
     const { data, error } = await supabase
@@ -161,10 +168,6 @@ export async function fetchEventsData() {
   }
 }
 
-/*
- * Player spotlight — five independent Supabase views, each
- * skipped if tied. Unchanged from the original home.js logic.
- */
 export async function fetchSpotlightData() {
   try {
     const [

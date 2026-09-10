@@ -7,6 +7,7 @@ import { initCarousel } from "../../components/carousel.js";
 import { fetchOverlayGradients } from "../../utils/overlay.js";
 import { excerptFrom } from "../../utils/format.js";
 import { fetchFirstMedia } from "./home-data.js";
+import { carouselNavButtons, wireCarouselNav } from "./home-shared.js";
 
 const MAX_NEWS = 4;
 
@@ -14,12 +15,28 @@ const MAX_NEWS = 4;
  * NEWS SECTION — self-contained fetch + render, same pattern as
  * the original loadSecondaryNews(). Not part of the shared
  * home-data.js layer since nothing else on the page needs this
- * data — no benefit to routing it through the shared fetch step.
+ * data.
+ *
+ * Returns { cleanup, advance } once resolved — advance only
+ * present with 2+ slides. Returns undefined on empty state or
+ * error (nothing to clean up or advance in either case).
+ *
+ * Note on retry: the error state's retry button calls this
+ * function again recursively. That re-render correctly clears
+ * nav buttons before re-adding them (see the querySelectorAll
+ * cleanup below) so a retry can't duplicate buttons — but the
+ * *carousel instance* from a failed-then-retried render isn't
+ * threaded back through home.js's registerSection(), since the
+ * retry call isn't awaited by anything outside this file. This
+ * mirrors a pre-existing gap from before this split (the original
+ * loadSecondaryNews() had the same orphaned-instance-on-retry
+ * behavior) — not introduced here, not fixed here either.
  */
 export async function renderNewsSection(root) {
-  const carouselRoot = root.querySelector('[data-slot="news-carousel"]');
+  const wrapEl = root.querySelector('[data-slot="news-carousel-wrap"]');
+  const carouselRoot = wrapEl?.querySelector('[data-slot="news-carousel"]');
   const track = carouselRoot?.querySelector("[data-track]");
-  if (!track) return undefined;
+  if (!wrapEl || !track) return undefined;
 
   try {
     const { data, error } = await supabase
@@ -32,6 +49,7 @@ export async function renderNewsSection(root) {
 
     if (!data?.length) {
       track.innerHTML = states.empty({ message: "More updates coming soon." });
+      clearNavButtons(wrapEl);
       return undefined;
     }
 
@@ -54,12 +72,34 @@ export async function renderNewsSection(root) {
     track.innerHTML = cards.join("");
     observeLazyImages(track);
 
-    const instance = initCarousel(carouselRoot);
-    return () => instance.destroy();
+    const instance = initCarousel(carouselRoot, { autoplay: false });
+    const hasMultiple = cards.length > 1;
+
+    clearNavButtons(wrapEl);
+    if (hasMultiple) {
+      wrapEl.insertAdjacentHTML("afterbegin", carouselNavButtons());
+      wireCarouselNav(wrapEl, instance);
+    }
+
+    return {
+      cleanup() {
+        instance.destroy();
+      },
+      advance: hasMultiple ? instance.advance : undefined,
+    };
   } catch (err) {
     console.error("[home] news section failed:", err);
     track.innerHTML = states.error();
+    clearNavButtons(wrapEl);
     states.bindRetry(track, () => renderNewsSection(root));
     return undefined;
   }
+}
+
+// Removes any nav buttons left over from a previous render of this
+// section before deciding whether to add fresh ones — prevents
+// duplicate buttons piling up if this section re-renders (e.g. on
+// retry after an error).
+function clearNavButtons(wrapEl) {
+  wrapEl.querySelectorAll("[data-nav]").forEach((el) => el.remove());
 }

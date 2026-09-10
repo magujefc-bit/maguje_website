@@ -27,6 +27,7 @@ import { competitionStandingsView } from "./views/competition-standings.js";
 import { competitionFixturesView } from "./views/competition-fixtures.js";
 import { competitionResultsView } from "./views/competition-results.js";
 import { competitionPlayerStatisticsView } from "./views/competition-player-statistics.js";
+import { standingsView } from "./views/standings.js";
 import { aboutView as clubProfileGeneralView } from "./views/about.js";
 import { clubHistoryView } from "./views/club-history.js";
 import { visionMissionView } from "./views/vision-mission.js";
@@ -69,113 +70,6 @@ import { matchCenterView as dashMatchCenterView } from "./dashboard/views/match-
 import { resultsView as dashResultsView } from "./dashboard/views/results.js";
 import { liveMatchView as dashLiveMatchView } from "./dashboard/views/live-match.js";
 import { contentDashboardView as dashContentDashboardView } from "./dashboard/views/content-dashboard.js";
-
-// Standings page reuses the same v_standings source as Home/Competitions,
-// scoped to Maguje FC's primary competition if one exists, else the first available.
-import { supabase } from "./supabase-client.js";
-import { viewContainer } from "./view-container.js";
-import { states } from "./components/states.js";
-import { standingsTable } from "./components/standings-table.js";
-import { skeletons } from "./components/skeletons.js";
-import { observeLazyImages } from "./components/lazy-image.js";
-import { getMagujeTeamId } from "./views/home.js";
-
-async function standingsView() {
-  await viewContainer.render(
-    `<div class="container"><div class="about-header"><h1 class="about-title">League Standings</h1><div data-slot="filter"></div></div><div data-slot="table">${skeletons.standings(10)}</div></div>`,
-  );
-  const root = document.querySelector("#app");
-  const slot = root.querySelector('[data-slot="table"]');
-  const filterSlot = root.querySelector('[data-slot="filter"]');
-  let competitions = [];
-  let activeCompId = null;
-
-  try {
-    const { data: comps, error: compsErr } = await supabase
-      .from("competitions")
-      .select("id, name")
-      .order("name", { ascending: true });
-    if (compsErr) throw compsErr;
-    competitions = comps || [];
-    if (!competitions.length) {
-      slot.innerHTML = states.empty({
-        message: "Standings will appear once the season begins.",
-      });
-      return { cleanup: null };
-    }
-
-    if (competitions.length > 1) {
-      activeCompId = competitions[0].id;
-      filterSlot.innerHTML = `
-        <div style="display: flex; gap: var(--sp-sm); margin-top: var(--sp-sm);">
-          ${competitions.map((c) => `<button type="button" class="btn btn--secondary" data-comp-id="${c.id}" data-active="${c.id === activeCompId}">${c.name}</button>`).join("")}
-        </div>`;
-
-      filterSlot.querySelectorAll("[data-comp-id]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          activeCompId = btn.dataset.compId;
-          filterSlot
-            .querySelectorAll("[data-comp-id]")
-            .forEach((b) =>
-              b.setAttribute("data-active", b.dataset.compId === activeCompId),
-            );
-          loadStandingsForComp(root, slot, activeCompId);
-        });
-      });
-    } else {
-      activeCompId = competitions[0].id;
-    }
-
-    await loadStandingsForComp(root, slot, activeCompId);
-  } catch (err) {
-    console.error("[standings] load failed:", err);
-    slot.innerHTML = states.error();
-    states.bindRetry(slot, async () => {
-      await standingsView();
-    });
-  }
-  return { cleanup: null };
-}
-
-async function loadStandingsForComp(root, slot, competitionId) {
-  try {
-    const { data, error } = await supabase
-      .from("v_standings")
-      .select(
-        "team_id, team_name, crest_url, played, won, drawn, lost, points, position, competition_id",
-      )
-      .eq("competition_id", competitionId)
-      .order("position", { ascending: true });
-
-    if (error) throw error;
-    if (!data.length) {
-      slot.innerHTML = states.empty({
-        message: "Standings will appear once matches are played.",
-      });
-      return;
-    }
-
-    const teamId = await getMagujeTeamId();
-    slot.innerHTML = standingsTable(
-      data.map((r) => ({
-        position: r.position,
-        teamId: r.team_id,
-        teamName: r.team_name,
-        crestUrl: r.crest_url,
-        played: r.played,
-        won: r.won,
-        drawn: r.drawn,
-        lost: r.lost,
-        points: r.points,
-      })),
-      { highlightTeamId: teamId },
-    );
-    observeLazyImages(slot);
-  } catch (err) {
-    console.error("[standings] load failed:", err);
-    slot.innerHTML = states.error();
-  }
-}
 
 async function boot() {
   const startingOnDashboard = window.location.pathname.startsWith(

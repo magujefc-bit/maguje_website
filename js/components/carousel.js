@@ -39,7 +39,7 @@ export function initCarousel(rootEl, options = {}) {
   } = options;
 
   const track = rootEl.querySelector('[data-track]');
-  if (!track) return { destroy() {}, goTo() {}, pause() {}, resume() {} };
+  if (!track) return { destroy() {}, goTo() {}, pause() {}, resume() {}, advance() {}, slideCount: () => 0 };
 
   let timer = null;
   let resumeTimeout = null;
@@ -78,6 +78,16 @@ export function initCarousel(rootEl, options = {}) {
 
   function tick() {
     if (isInteracting || destroyed) return;
+    if (slideCount() <= 1) return;
+    goTo(nextIndex(currentIndex()));
+  }
+
+  // Advances one slide, looping at the end. Unlike tick(), this
+  // ignores isInteracting entirely — used by external orchestrators
+  // (e.g. the home page's shared 15s auto-scroll) where manual
+  // scroll must never suppress or delay the shared beat.
+  function advance() {
+    if (destroyed) return;
     if (slideCount() <= 1) return;
     goTo(nextIndex(currentIndex()));
   }
@@ -131,7 +141,9 @@ export function initCarousel(rootEl, options = {}) {
     goTo,
     pause,
     resume,
+    advance,
     currentIndex,
+    slideCount,
     destroy() {
       destroyed = true;
       stopTimer();

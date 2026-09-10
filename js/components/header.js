@@ -120,28 +120,30 @@ class Header {
           </ul>
         </nav>
 
-        <a
-          href="/search"
-          class="header__search-btn"
-          data-path="/search"
-          aria-label="Search"
-        >
-          <span aria-hidden="true">🔍</span>
-        </a>
+        <div class="header__actions">
+          <a
+            href="/search"
+            class="header__search-btn"
+            data-path="/search"
+            aria-label="Search"
+          >
+            <span aria-hidden="true">🔍</span>
+          </a>
 
-        <button
-          type="button"
-          class="header__menu-btn show-mobile-only"
-          data-menu-toggle
-          aria-expanded="false"
-          aria-controls="mobile-menu"
-          aria-label="Open menu"
-        >
-          <span
-            class="header__menu-icon"
-            aria-hidden="true"
-          ></span>
-        </button>
+          <button
+            type="button"
+            class="header__menu-btn show-mobile-only"
+            data-menu-toggle
+            aria-expanded="false"
+            aria-controls="mobile-menu"
+            aria-label="Open menu"
+          >
+            <span
+              class="header__menu-icon"
+              aria-hidden="true"
+            ></span>
+          </button>
+        </div>
       </div>
 
       <div
