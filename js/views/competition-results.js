@@ -29,7 +29,7 @@ export async function competitionResultsView(params) {
     const { data, error } = await supabase
       .from("matches")
       .select(
-        "id, slug, match_date, our_score, opponent_score, opponent_team_id",
+        "id, slug, match_date, our_score, opponent_score, opponent_team_id, is_home",
       )
       .eq("competition_id", comp.id)
       .eq("status", "completed")
@@ -42,7 +42,7 @@ export async function competitionResultsView(params) {
       <div class="container">
         ${competitionHeaderBlock(comp)}
         ${competitionSubNav(slug, "results")}
-        <div class="flex flex-col gap-sm" style="padding-bottom: var(--sp-2xl);" data-slot="list">${data.length ? matchesWithOpp.map((m) => matchCard(toExternalMatch({ ...m, status: "completed" }))).join("") : states.empty({ message: "No results yet in this competition." })}</div>
+        <div class="flex flex-col gap-sm" style="padding-bottom: var(--sp-2xl);" data-slot="list">${data.length ? matchesWithOpp.map((m) => matchCard({ ...toExternalMatch({ ...m, status: "completed" }), competition: { id: comp.id, name: comp.name } })).join("") : states.empty({ message: "No results yet in this competition." })}</div>
       </div>`);
     observeLazyImages(root);
   } catch (err) {
