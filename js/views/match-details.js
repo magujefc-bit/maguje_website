@@ -8,7 +8,7 @@ import { startingXIList, substituteList } from "../components/lineup.js";
 import { shareBar, bindShareBar } from "../components/controls.js";
 import { observeLazyImages } from "../components/lazy-image.js";
 import { injectStyle } from "../utils/inject-style.js";
-import { combineDateTime } from "./home.js";
+import { combineDateTime, toExternalMatch } from "./home.js";
 
 injectStyle(
   "match-details-view",
@@ -34,7 +34,7 @@ export async function matchDetailsView(params) {
     const { data: match, error } = await supabase
       .from("matches")
       .select(
-        "id, slug, match_date, match_time, status, live_state, is_live, our_score, opponent_score, venue, opponent_team_id, competition:competitions(id, name)",
+        "id, slug, match_date, match_time, status, live_state, is_live, our_score, opponent_score, venue, opponent_team_id, is_home, competition:competitions(id, name)",
       )
       .eq("slug", slug)
       .maybeSingle();
@@ -105,17 +105,10 @@ async function renderMatch(root, match, channels) {
     headerSlot.appendChild(wrap);
   } else {
     headerSlot.innerHTML = matchHeader({
+      ...toExternalMatch(match),
       status: match.is_live ? "live" : match.status,
-      kickoffAt: combineDateTime(match.match_date, match.match_time),
       venue: match.venue,
-      homeScore: match.our_score,
-      awayScore: match.opponent_score,
       competition: match.competition,
-      homeTeam: { name: "Maguje FC", crestUrl: "/assets/crest.svg" },
-      awayTeam: {
-        name: match.opponent?.name || "TBD",
-        crestUrl: match.opponent?.logo_url,
-      },
     });
     observeLazyImages(headerSlot);
   }
@@ -208,9 +201,13 @@ async function renderMatch(root, match, channels) {
   const shareUrl = window.location.origin + "/matches/" + match.slug;
   const shareTitle = `Maguje FC vs ${match.opponent?.name || "TBD"}`;
 
+  const headToHeadCard = match.opponent_team_id
+    ? `<div class="sidebar-card" style="margin-top: var(--sp-sm);"><div class="sidebar-card__title">Head to Head</div><p class="text-body-sm">Explore Maguje FC's record against ${match.opponent?.name || "this opponent"}.</p><a href="/results/head-to-head/${match.opponent_team_id}" class="btn btn--secondary" style="margin-top: var(--sp-xs); display:inline-block;">View head-to-head vs ${match.opponent?.name || "opponent"} →</a></div>`
+    : "";
+
   root.querySelector('[data-slot="sidebar"]').innerHTML = `
         <div class="sidebar-card"><div class="sidebar-card__title">Venue</div><p class="text-body-sm">${match.venue || "Not specified"}</p></div>
-        <div class="sidebar-card" style="margin-top: var(--sp-sm);"><div class="sidebar-card__title">Head to Head</div><p class="text-body-sm">Explore Maguje FC's records against opponents.</p><a href="/results/head-to-head" class="btn btn--secondary" style="margin-top: var(--sp-xs); display:inline-block;">View head-to-head →</a></div>
+        ${headToHeadCard}
         <div class="sidebar-card" style="margin-top: var(--sp-sm);"><div class="sidebar-card__title">Share</div>${shareBar(shareUrl, shareTitle)}</div>
       `;
 
