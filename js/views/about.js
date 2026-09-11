@@ -4,6 +4,7 @@ import { states } from '../components/states.js';
 import { lazyImage, observeLazyImages } from '../components/lazy-image.js';
 import { injectStyle } from '../utils/inject-style.js';
 import { aboutHeader, clubProfileSubNav } from './club-shared.js';
+import { formatPlainText } from '../utils/format-text.js';
 
 injectStyle('about-view', `
   .about-overview {
@@ -140,7 +141,7 @@ export async function aboutView() {
       <hr class="about-divider">
 
       <p class="about-description">
-        ${profile.description || ''}
+        ${formatPlainText(profile.description)}
       </p>
 
       <div>

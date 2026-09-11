@@ -5,8 +5,8 @@ import { searchBox, bindSearchBox } from '../components/controls.js';
 import { injectStyle } from '../utils/inject-style.js';
 
 injectStyle('search-view', `
-  .search-view-header { padding-block: var(--sp-lg) var(--sp-sm); }
-  .search-view-title { font-size: var(--fs-2xl); margin-bottom: var(--sp-sm); }
+  .search-view-header { padding-block: var(--sp-xs) var(--sp-2xs); }
+  .search-view-header .search-box__input { padding: var(--sp-2xs) var(--sp-sm) var(--sp-2xs) var(--sp-lg); font-size: var(--fs-sm); }
   .search-results { padding-bottom: var(--sp-2xl); }
   .search-result-group { margin-bottom: var(--sp-lg); }
   .search-result-group__label { font-family: var(--font-mono); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.05em; color: rgba(16,36,26,0.5); margin-bottom: var(--sp-xs); padding-bottom: var(--sp-2xs); border-bottom: 1px solid var(--color-line); }
@@ -16,7 +16,18 @@ injectStyle('search-view', `
   .search-prompt { text-align: center; padding-block: var(--sp-xl); color: rgba(16,36,26,0.5); }
 `);
 
-const TYPE_LABELS = { news: 'News', event: 'Events', activity: 'Community', player: 'Players', team: 'Team', competition: 'Competitions', official: 'Officials' };
+const TYPE_LABELS = {
+  news: 'News',
+  event: 'Events',
+  match_report: 'Match Reports',
+  match: 'Matches',
+  player: 'Players',
+  team: 'Team',
+  competition: 'Competitions',
+  official: 'Officials',
+  honour: 'Honours',
+  club_page: 'Club',
+};
 
 export async function searchView(params, query) {
   const initialQuery = query.get('q') || '';
@@ -24,7 +35,6 @@ export async function searchView(params, query) {
   await viewContainer.render(`
     <div class="container">
       <div class="search-view-header">
-        <h1 class="search-view-title">Search</h1>
         ${searchBox({ placeholder: 'Search news, players, matches, competitions…', value: initialQuery })}
       </div>
       <div class="search-results" data-slot="results">${initialQuery ? '<div class="search-prompt">Searching…</div>' : '<div class="search-prompt">Start typing to search Maguje FC.</div>'}</div>
@@ -36,6 +46,21 @@ export async function searchView(params, query) {
   return { cleanup: null };
 }
 
+// Turns typed words into a prefix-matching tsquery, e.g. "mag ho" -> "mag:* & ho:*",
+// so every word (not just the last one) matches on partial spelling as it's typed.
+// Passing this string to .textSearch() with no `type` option makes Supabase build
+// it with a plain to_tsquery() call, which (unlike websearch_to_tsquery) understands
+// the `:*` prefix operator.
+function buildPrefixQuery(q) {
+  return q
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.replace(/[&|!():*]/g, ''))
+    .filter(Boolean)
+    .map((word) => `${word}:*`)
+    .join(' & ');
+}
+
 async function runSearch(root, rawQuery, { skipUrlUpdate = false } = {}) {
   const slot = root.querySelector('[data-slot="results"]');
   const q = rawQuery.trim();
@@ -43,9 +68,12 @@ async function runSearch(root, rawQuery, { skipUrlUpdate = false } = {}) {
   if (!q) { slot.innerHTML = '<div class="search-prompt">Start typing to search Maguje FC.</div>'; return; }
   if (q.length < 2) { slot.innerHTML = '<div class="search-prompt">Keep typing…</div>'; return; }
 
+  const tsQuery = buildPrefixQuery(q);
+  if (!tsQuery) { slot.innerHTML = '<div class="search-prompt">Keep typing…</div>'; return; }
+
   slot.innerHTML = '<div class="search-prompt">Searching…</div>';
   try {
-    const { data, error } = await supabase.from('v_search_index').select('type, title, snippet, path, sort_date').textSearch('search_vector', q, { type: 'websearch' }).order('sort_date', { ascending: false, nullsFirst: false }).limit(40);
+    const { data, error } = await supabase.from('v_search_index').select('type, title, snippet, path, sort_date').textSearch('search_vector', tsQuery, { config: 'english' }).order('sort_date', { ascending: false, nullsFirst: false }).limit(40);
     if (error) throw error;
     if (!data.length) { slot.innerHTML = states.empty({ message: `No results for "${q}".` }); return; }
     slot.innerHTML = renderGrouped(data);

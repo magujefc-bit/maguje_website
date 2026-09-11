@@ -3,6 +3,7 @@ import { requireAdmin } from '../auth-gate.js';
 import { pageHeader } from '../components/page-header.js';
 import { injectStyle } from '../utils/inject-style.js';
 import { supabaseClient } from '../supabase-client-esm.js';
+import { OFFICIAL_ROLES } from '../utils/official-roles.js';
 
 injectStyle('officials-view', `
   .toolbar input[type="text"] { width: 240px; }
@@ -17,6 +18,14 @@ injectStyle('officials-view', `
   .official-bio { font-size: 0.8rem; color: #666; margin: 0.6rem 0 0; }
   .official-actions { display: flex; gap: 0.4rem; margin-top: 0.8rem; }
 `);
+
+function roleOptionsHtml(selected = '') {
+  const blank = `<option value="" ${selected ? '' : 'selected'}>Select role…</option>`;
+  const options = OFFICIAL_ROLES.map(
+    (role) => `<option value="${role}" ${role === selected ? 'selected' : ''}>${role}</option>`,
+  ).join('');
+  return blank + options;
+}
 
 export async function officialsView() {
   const admin = await requireAdmin(['senior_manager']);
@@ -37,7 +46,7 @@ export async function officialsView() {
         </div>
         <div>
           <label for="new-official-role">Role</label>
-          <input type="text" id="new-official-role" placeholder="e.g. Head Coach">
+          <select id="new-official-role">${roleOptionsHtml()}</select>
         </div>
       </div>
       <div class="field-grid full">
@@ -63,6 +72,10 @@ export async function officialsView() {
     <!-- LIST -->
     <div class="toolbar">
       <input type="text" id="search-input" placeholder="Search by name or role…">
+      <select id="filter-role">
+        <option value="">All roles</option>
+        ${OFFICIAL_ROLES.map((role) => `<option value="${role}">${role}</option>`).join('')}
+      </select>
       <select id="filter-active">
         <option value="">All statuses</option>
         <option value="true">Active only</option>
@@ -97,10 +110,12 @@ export async function officialsView() {
   }
 
   document.getElementById('search-input').addEventListener('input', renderGrid);
+  document.getElementById('filter-role').addEventListener('change', renderGrid);
   document.getElementById('filter-active').addEventListener('change', renderGrid);
 
   function renderGrid() {
     const search = document.getElementById('search-input').value.trim().toLowerCase();
+    const roleFilter = document.getElementById('filter-role').value;
     const activeFilter = document.getElementById('filter-active').value;
     const grid = document.getElementById('officials-grid');
 
@@ -108,8 +123,9 @@ export async function officialsView() {
       const matchesSearch = !search ||
         o.full_name.toLowerCase().includes(search) ||
         (o.official_role || '').toLowerCase().includes(search);
+      const matchesRole = !roleFilter || o.official_role === roleFilter;
       const matchesActive = activeFilter === '' || String(o.is_active) === activeFilter;
-      return matchesSearch && matchesActive;
+      return matchesSearch && matchesRole && matchesActive;
     });
 
     if (!filtered.length) {
@@ -155,7 +171,7 @@ export async function officialsView() {
   document.getElementById('create-official-btn').addEventListener('click', async () => {
     const statusEl = document.getElementById('create-status');
     const full_name = document.getElementById('new-full-name').value.trim();
-    const official_role = document.getElementById('new-official-role').value.trim() || null;
+    const official_role = document.getElementById('new-official-role').value || null;
     const bio = document.getElementById('new-bio').value.trim() || null;
     const is_active = document.getElementById('new-is-active').checked;
     const fileInput = document.getElementById('new-photo');
@@ -209,7 +225,7 @@ export async function officialsView() {
         </div>
         <div>
           <label>Role</label>
-          <input type="text" class="edit-role" value="${escapeAttr(item.official_role || '')}">
+          <select class="edit-role">${roleOptionsHtml(item.official_role || '')}</select>
         </div>
       </div>
       <div class="field-grid full">
@@ -238,7 +254,7 @@ export async function officialsView() {
     card.querySelector('.save-edit-btn').addEventListener('click', async () => {
       const statusEl = card.querySelector('.edit-status');
       const full_name = card.querySelector('.edit-name').value.trim();
-      const official_role = card.querySelector('.edit-role').value.trim() || null;
+      const official_role = card.querySelector('.edit-role').value || null;
       const bio = card.querySelector('.edit-bio').value.trim() || null;
       const is_active = card.querySelector('.edit-active').checked;
       const fileInput = card.querySelector('.edit-photo');

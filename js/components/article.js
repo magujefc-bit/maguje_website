@@ -1,5 +1,6 @@
 import { injectStyle } from '../utils/inject-style.js';
 import { lazyImage } from './lazy-image.js';
+import { formatPlainText } from '../utils/format-text.js';
 
 injectStyle('article', `
   .article-header { padding-block: var(--sp-lg) var(--sp-md); }
@@ -33,7 +34,7 @@ export function articleMetadata(meta) {
 export function articleHeroImage(src, alt, overlayGradient) {
   return `<div class="article-hero-image">${lazyImage({ src, alt, aspect: 'video' })}${overlayGradient ? `<div class="article-hero-image__overlay" style="background:${overlayGradient};"></div>` : ''}</div>`;
 }
-export function articleContent(bodyHtml) { return `<div class="article-content">${bodyHtml}</div>`; }
+export function articleContent(bodyHtml) { return `<div class="article-content">${formatPlainText(bodyHtml)}</div>`; }
 export function relatedNewsSection(titleLabel, cardsHtml) { return `<div class="related-news"><h2 class="related-news__title">${titleLabel}</h2><div class="grid grid--3">${cardsHtml}</div></div>`; }
 
 function formatDate(iso) {

@@ -1,5 +1,6 @@
 import { injectStyle } from '../utils/inject-style.js';
 import { lazyImage } from './lazy-image.js';
+import { formatPlainText } from '../utils/format-text.js';
 
 injectStyle('club-identity', `
   .official-card {
@@ -345,12 +346,12 @@ export function visionMissionSection({ vision, mission }) {
     <div class="vision-mission">
       <div class="vision-mission__block">
         <div class="vision-mission__label">Vision</div>
-        <p class="vision-mission__text">${vision}</p>
+        <div class="vision-mission__text">${formatPlainText(vision)}</div>
       </div>
 
       <div class="vision-mission__block">
         <div class="vision-mission__label">Mission</div>
-        <p class="vision-mission__text">${mission}</p>
+       <div class="vision-mission__text">${formatPlainText(mission)}</div>
       </div>
     </div>
   `;

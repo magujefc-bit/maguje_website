@@ -1,97 +1,51 @@
-# Maguje FC — Public Website
+Here's a documentation-quality addition, written for someone picking up this repo cold — corrects one factual error the original README actually had, and captures everything genuinely new from this session. Structured to slot in as new sections plus edits to the existing "Known gaps" list, not a full rewrite.
 
-Vanilla HTML/CSS/JS single-page application (client-side router, no
-build step, no framework), backed by Supabase project
-`pxtexddyvthgmietwhyc` (magujefcDataBase).
+---
 
-## Running locally
+## Home Page Architecture
 
-Any static file server works, e.g.:
+`js/views/home.js` was split from a single ~500-line file into a `js/views/home/` module, each file scoped to one responsibility:
 
-```
-npx serve .
-```
+| File | Responsibility |
+|---|---|
+| `home.js` | Orchestrator only — renders the page skeleton, fetches shared data once, calls each section's render function in page order, owns the shared auto-scroll timer. |
+| `home/home-data.js` | All Supabase reads for the home page. No DOM access. |
+| `home/home-shared.js` | Section header markup/styles and the carousel nav-button component shared across sections. |
+| `home/hero-section.js` | Greeting + live/upcoming match carousel. |
+| `home/fixtures-section.js` | Conditional live/upcoming fixture cards + countdown pill. |
+| `home/events-section.js` | Conditional featured event card(s). |
+| `home/spotlight-section.js` | Player spotlight carousel. |
+| `home/news-section.js` / `home/reports-section.js` | Self-contained fetch + render for their own carousels. |
+| `utils/format.js` | Shared pure display helpers (`excerptFrom`, `combineDateTime`, `toExternalMatch`, `escapeHtml`) — no Supabase, no DOM. |
 
-or open `index.html` via a local dev server that supports SPA fallback
-(all routes should serve `index.html`).
+**Page order:** Hero → Events (conditional) → Fixtures (conditional) → Spotlight → News → Match Reports.
 
-## Deploying
+**Known technical debt from this refactor:** `home.js` temporarily re-exports `getMagujeTeamId`, `fetchFirstMedia`, `fetchAllMedia`, `toExternalMatch`, `combineDateTime`, and `excerptFrom` for backward compatibility — at least 10 other views (`news.js`, `match-reports.js`, `fixtures.js`, `match-details.js`, etc.) still import these directly from `home.js` rather than their real new locations. This shim must stay in place until those 10 files' imports are updated individually; removing it early breaks the entire site (every JS module fails to load, since ES module resolution is all-or-nothing).
 
-Deploy as a static site (Netlify, Vercel, etc.) with a catch-all
-rewrite rule: every path → `/index.html`, status 200. Without this,
-direct navigation to e.g. `/fixtures` will 404 at the host level
-before the client router ever runs.
+## Fixtures & Events Data Rules
 
-## IMPORTANT — read before connecting the admin dashboard
+- **`is_internal` must be `true`** to identify real matches in this club's data — despite what an earlier version of this README implied, this is not a flag for excluding derby matches. Any future query against `matches` should default to `is_internal = true`, not `false`.
+- The upcoming-fixtures query returns matches scheduled for **today and tomorrow only**, and deliberately does **not** exclude a match whose kickoff time has already passed as long as its `status` is still `scheduled`/`pending` — this covers the common case where a match's status hasn't been manually updated yet after kickoff.
+- Match rows only store `competition_id`, not a denormalized `competition_name` — the name is resolved via a small in-memory join against the `competitions` table (`id, name`), following the same batch-fetch pattern `attachOpponents` already uses for `opponent_team_id`.
 
-This public site was built against the live database, and a few
-schema changes were made directly via migration to support it:
+## Global Carousel Behavior
 
-1. **`players.slug`**, **`matches.slug`**, **`competitions.slug`** —
-   added as `NOT NULL UNIQUE` columns. A `BEFORE INSERT` trigger on
-   each table auto-generates a slug if one isn't provided, so **the
-   existing admin dashboard does not need any code changes** to keep
-   creating players/matches/competitions.
-2. **`players.jersey_number`** — added, nullable. Existing players
-   have `NULL` here until filled in via the dashboard.
-3. **`contact_messages`** table — new, for the public Contact form.
-   No dashboard UI exists yet to view these; check the table directly
-   in Supabase Studio, or ask to have an admin view built.
-4. **Five new views** (read-only, safe, no dashboard impact):
-   `v_standings`, `v_player_stats`, `v_player_career_stats`,
-   `v_player_appearances`, `v_search_index`, `v_head_to_head`.
+Events, Fixtures, Spotlight, News, and Match Reports share one coordinated auto-scroll system, distinct from Hero's independent autoplay:
 
-None of these changes alter or remove any existing column the
-dashboard already relies on. If the dashboard has its own slug or
-jersey-number input fields already, they'll just populate the new
-columns going forward — no conflict either way.
+- A single 15-second timer (`AUTO_SCROLL_DELAY_MS` in `home.js`) starts fresh on every home page mount and repeats for as long as the page stays active. Navigating away and back resets it.
+- Each qualifying section (2+ slides) advances one slide per tick, from wherever it currently sits, looping at its own end — sections do not jump to a shared absolute index.
+- Manual swipe/scroll never pauses or resets the timer. This required adding an `advance()` method to `carousel.js` that bypasses the existing interaction-pause logic used by `tick()`.
+- Sections with only 1 slide render no nav buttons and are excluded from the shared timer entirely — evaluated per render based on actual item count, not hardcoded.
+- Every participating section's render function returns `{ cleanup, advance }` (or `undefined` if there's nothing to render), which `home.js` collects into a registry the timer calls on each tick.
 
-## Known gaps / follow-ups
+## Hero
 
-- **Match Reports** now have their own public pages (`/match-reports`
-  list + `/match-reports/:slug` detail, plus a "Latest Match Report"
-  home section) — mirrors the News pages, with a photo gallery/
-  lightbox for the extra images. Run
-  `sql/add_match_report_public_read.sql` before deploying — it adds
-  the anon SELECT policy `match_report_posts` was missing.
-  **Not yet done:** `match_report_posts` has no `match_id` column, so
-  there's still no automatic link from a specific Match Details page
-  to its report — reports are a standalone content feed, same as
-  News. If a "Read the match report →" link on Match Details is
-  wanted, the dashboard needs a `match_id` FK added to
-  `match_report_posts` first.
-- **Internal derby matches** (`matches.is_internal = true`, using
-  `team_a_id`/`team_b_id`) are not shown anywhere on the public site —
-  every match view assumes Maguje FC vs an external opponent.
-- **`overlay_templates`** (CSS gradient cover treatment) exists in the
-  schema but isn't used — news/event/activity covers currently just
-  use the first linked photo from `post_media` via `media_library.url`.
-- **OG meta tag injection** (per-route social preview tags) is not
-  built — needs a Netlify/Supabase Edge Function that intercepts the
-  initial HTML request and injects the right `<meta property="og:*">`
-  tags before the SPA takes over, especially for News/Match/Player
-  detail pages with dynamic slugs.
-- **`sitemap.xml`** is not generated — needs a build-time or scheduled
-  script pulling all dynamic slugs (news, matches, players,
-  competitions, events, activities, gallery) into a sitemap.
-- **RLS**: all `anon`-facing tables/views used here should be
-  double-checked for public SELECT policies in Supabase before going
-  live — most were granted during this build, but a full audit is
-  worth doing once.
+Fixed `aspect-ratio: 16 / 9` (not `min-height`, which previously let content push the box taller than intended). No club crest — removed by design. Rotates a live-match slide (if any) plus one slide per upcoming match, with no time restriction; unlike Fixtures section below it, Hero is not gated to a 48-hour window.
 
-## Project structure
+## Known Gaps — Updates
 
-```
-index.html
-css/            8 stylesheets (tokens, responsive, components, states)
-js/
-  main.js       boots the app, registers every route
-  router.js     hand-rolled SPA router (History API)
-  view-container.js   handles view swap + transitions
-  supabase-client.js  Supabase client init
-  utils/        shared helpers (style injection)
-  components/   21 reusable UI components (cards, tables, controls…)
-  views/        38 page views, one per route
-assets/         placeholder crest/favicon/fallback SVGs — replace with real artwork
-sql/            migration change log
-```
+Remove from the old list: *"Match Reports have public pages but need a migration"* if that's since been applied — confirm before removing, as it wasn't touched in this refactor.
+
+Add:
+- Home page's 10-file compatibility shim (above) needs cleanup.
+- News/Match Reports carousels can orphan a carousel instance if their retry-after-error path fires more than once — a pre-existing gap, not introduced by this refactor, not yet fixed.

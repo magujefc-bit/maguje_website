@@ -3,6 +3,7 @@ import { viewContainer } from '../view-container.js';
 import { states } from '../components/states.js';
 import { aboutHeader } from './club-shared.js';
 import { observeLazyImages } from '../components/lazy-image.js';
+import { OFFICIAL_ROLES } from '../utils/official-roles.js';
 
 export async function clubOfficialsView() {
   await viewContainer.render(`
@@ -41,7 +42,21 @@ export async function clubOfficialsView() {
       return { cleanup: null };
     }
 
-    slot.innerHTML = data.map(o => `
+    // Sort by the canonical role order (Patron, Team Manager, Head
+    // Coach, ...), then alphabetically by name within each role.
+    // Any official whose role isn't in the canonical list (or has
+    // no role set) sorts to the end, after everyone with a
+    // recognized role — rather than disappearing or sorting first.
+    const sorted = [...data].sort((a, b) => {
+      const rankA = OFFICIAL_ROLES.indexOf(a.official_role);
+      const rankB = OFFICIAL_ROLES.indexOf(b.official_role);
+      const orderA = rankA === -1 ? OFFICIAL_ROLES.length : rankA;
+      const orderB = rankB === -1 ? OFFICIAL_ROLES.length : rankB;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.full_name.localeCompare(b.full_name);
+    });
+
+    slot.innerHTML = sorted.map(o => `
       <div class="official-card">
 
         <div class="official-card__photo">
