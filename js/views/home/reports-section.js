@@ -5,11 +5,24 @@ import { states } from "../../components/states.js";
 import { observeLazyImages } from "../../components/lazy-image.js";
 import { initCarousel } from "../../components/carousel.js";
 import { fetchOverlayGradients } from "../../utils/overlay.js";
-import { excerptFrom } from "../../utils/format.js";
 import { fetchFirstMedia } from "./home-data.js";
 import { carouselNavButtons, wireCarouselNav } from "./home-shared.js";
 
 const MAX_MATCH_REPORTS = 4;
+
+/*
+ * Trim match report body to a maximum of 8 words.
+ * Adds "..." only when the original text contains more than 8 words.
+ */
+function trimToEightWords(text) {
+  if (!text) return "";
+
+  const words = text.trim().split(/\s+/);
+
+  return words.length > 8
+    ? words.slice(0, 8).join(" ") + "..."
+    : text.trim();
+}
 
 /*
  * MATCH REPORTS SECTION — self-contained fetch + render, same
@@ -26,6 +39,7 @@ export async function renderReportsSection(root) {
   const wrapEl = root.querySelector('[data-slot="reports-carousel-wrap"]');
   const carouselRoot = wrapEl?.querySelector('[data-slot="reports-carousel"]');
   const track = carouselRoot?.querySelector("[data-track]");
+
   if (!wrapEl || !track) return undefined;
 
   try {
@@ -38,37 +52,53 @@ export async function renderReportsSection(root) {
     if (error) throw error;
 
     if (!data?.length) {
-      track.innerHTML = states.empty({ message: "No match reports yet — check back after the next game." });
+      track.innerHTML = states.empty({
+        message: "No match reports yet — check back after the next game.",
+      });
+
       clearNavButtons(wrapEl);
       return undefined;
     }
 
-    const overlayMap = await fetchOverlayGradients(supabase, data.map((p) => p.cover_overlay_id));
+    const overlayMap = await fetchOverlayGradients(
+      supabase,
+      data.map((p) => p.cover_overlay_id),
+    );
 
     const cards = await Promise.all(
       data.map(async (post) => {
         const cover = await fetchFirstMedia("match_report", post.id);
+
         return `<div class="carousel__slide">${newsCard(
           {
             slug: post.slug,
             title: post.title,
-            excerpt: excerptFrom(post.body),
+            excerpt: trimToEightWords(post.body),
             coverImageUrl: cover,
             publishedAt: post.created_at,
-            overlayGradient: overlayMap.get(post.cover_overlay_id) || null,
+            overlayGradient:
+              overlayMap.get(post.cover_overlay_id) || null,
           },
-          { basePath: "/match-reports", badge: "Match Report" },
+          {
+            basePath: "/match-reports",
+            badge: "Match Report",
+          },
         )}</div>`;
       }),
     );
 
     track.innerHTML = cards.join("");
+
     observeLazyImages(track);
 
-    const instance = initCarousel(carouselRoot, { autoplay: false });
+    const instance = initCarousel(carouselRoot, {
+      autoplay: false,
+    });
+
     const hasMultiple = cards.length > 1;
 
     clearNavButtons(wrapEl);
+
     if (hasMultiple) {
       wrapEl.insertAdjacentHTML("afterbegin", carouselNavButtons());
       wireCarouselNav(wrapEl, instance);
@@ -78,13 +108,18 @@ export async function renderReportsSection(root) {
       cleanup() {
         instance.destroy();
       },
+
       advance: hasMultiple ? instance.advance : undefined,
     };
   } catch (err) {
     console.error("[home] match reports section failed:", err);
+
     track.innerHTML = states.error();
+
     clearNavButtons(wrapEl);
+
     states.bindRetry(track, () => renderReportsSection(root));
+
     return undefined;
   }
 }
