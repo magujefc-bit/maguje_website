@@ -4,6 +4,8 @@ import { states } from '../components/states.js';
 import { injectStyle } from '../utils/inject-style.js';
 import { attachTeamPicker } from '../components/team-picker.js';
 import { escapeHtml } from '../utils/format.js';
+import { matchCard } from '../components/match-card.js';
+import { observeLazyImages } from '../components/lazy-image.js';
 
 injectStyle('h2h-index-view', `
   .h2h-header { padding-block: var(--sp-lg) var(--sp-sm); }
@@ -28,6 +30,8 @@ injectStyle('h2h-index-view', `
   .h2h-summary__item { background: rgba(16,36,26,0.03); border: 1px solid var(--color-line); border-radius: var(--radius-md); padding: var(--sp-sm); text-align: center; }
   .h2h-summary__value { font-family: var(--font-display); font-size: var(--fs-xl); color: var(--color-ridge-green); }
   .h2h-summary__label { font-size: var(--fs-xs); text-transform: uppercase; color: rgba(16,36,26,0.6); }
+
+  .h2h-other-matches { display: flex; flex-direction: column; gap: var(--sp-sm); margin-top: var(--sp-sm); }
 `);
 
 export async function headToHeadIndexView() {
@@ -167,12 +171,22 @@ export async function headToHeadIndexView() {
     otherStatusEl.textContent = 'Loading…';
 
     try {
-      const { data, error } = await supabase
-        .from('v_external_head_to_head')
-        .select('team_1_id, team_2_id, played, team_1_wins, team_2_wins, draws, team_1_goals, team_2_goals')
-        .or(`and(team_1_id.eq.${otherTeam1.id},team_2_id.eq.${otherTeam2.id}),and(team_1_id.eq.${otherTeam2.id},team_2_id.eq.${otherTeam1.id})`)
-        .maybeSingle();
+      const [{ data, error }, { data: matchRows, error: mErr }] = await Promise.all([
+        supabase
+          .from('v_external_head_to_head')
+          .select('team_1_id, team_2_id, played, team_1_wins, team_2_wins, draws, team_1_goals, team_2_goals')
+          .or(`and(team_1_id.eq.${otherTeam1.id},team_2_id.eq.${otherTeam2.id}),and(team_1_id.eq.${otherTeam2.id},team_2_id.eq.${otherTeam1.id})`)
+          .maybeSingle(),
+        supabase
+          .from('matches')
+          .select('id, slug, match_date, team_a_id, team_b_id, team_a_score, team_b_score, competition_id')
+          .eq('is_internal', false)
+          .eq('status', 'completed')
+          .or(`and(team_a_id.eq.${otherTeam1.id},team_b_id.eq.${otherTeam2.id}),and(team_a_id.eq.${otherTeam2.id},team_b_id.eq.${otherTeam1.id})`)
+          .order('match_date', { ascending: false }),
+      ]);
       if (error) throw error;
+      if (mErr) throw mErr;
 
       otherStatusEl.textContent = '';
       if (!data) {
@@ -181,6 +195,12 @@ export async function headToHeadIndexView() {
       }
 
       const team1IsStoredTeam1 = String(data.team_1_id) === String(otherTeam1.id);
+
+      const competitionIds = [...new Set((matchRows || []).map((m) => m.competition_id).filter(Boolean))];
+      const { data: competitionRows } = competitionIds.length
+        ? await supabase.from('competitions').select('id, name').in('id', competitionIds)
+        : { data: [] };
+      const competitionNameById = Object.fromEntries((competitionRows || []).map((c) => [c.id, c.name]));
 
       renderOtherResult({
         team1Name: otherTeam1.name,
@@ -192,6 +212,8 @@ export async function headToHeadIndexView() {
         team2Goals: team1IsStoredTeam1 ? data.team_2_goals : data.team_1_goals,
         played: data.played,
       });
+
+      renderOtherMatches(matchRows || [], otherTeam1, otherTeam2, competitionNameById);
     } catch (err) {
       console.error('[head-to-head-index] compare failed:', err);
       otherStatusEl.textContent = 'Something went wrong loading that comparison.';
@@ -208,8 +230,41 @@ export async function headToHeadIndexView() {
           <div class="h2h-summary__item"><div class="h2h-summary__value">${team2Wins}</div><div class="h2h-summary__label">${escapeHtml(team2Name)} Wins</div></div>
         </div>
         <p class="text-body-sm" style="color: rgba(16,36,26,0.6);">${escapeHtml(team1Name)} ${team1Goals} – ${team2Goals} ${escapeHtml(team2Name)} aggregate across ${played} match${played === 1 ? '' : 'es'}.</p>
+        <div class="h2h-other-matches" data-slot="other-matches"></div>
       </div>
     `;
+  }
+
+  function renderOtherMatches(matchRows, team1, team2, competitionNameById) {
+    const slot = otherResultEl.querySelector('[data-slot="other-matches"]');
+    if (!slot) return;
+
+    if (!matchRows.length) {
+      slot.innerHTML = states.empty({ message: 'No individual match records available for these two teams.' });
+      return;
+    }
+
+    slot.innerHTML = matchRows.map((m) => matchCard(toExternalOnlyMatch(m, team1, team2, competitionNameById))).join('');
+    observeLazyImages(slot);
+  }
+
+  // Builds a matchCard()-compatible object for a match between two teams
+  // where NEITHER side is necessarily Maguje — unlike toExternalMatch() in
+  // home.js, which always assumes Maguje is one of the two sides.
+  function toExternalOnlyMatch(m, team1, team2, competitionNameById) {
+    const team1IsTeamA = String(m.team_a_id) === String(team1.id);
+    const homeTeam = team1IsTeamA ? team1 : team2;
+    const awayTeam = team1IsTeamA ? team2 : team1;
+    return {
+      slug: m.slug,
+      status: 'completed',
+      kickoffAt: m.match_date,
+      homeScore: m.team_a_score,
+      awayScore: m.team_b_score,
+      homeTeam: { name: homeTeam.name, crestUrl: homeTeam.logo_url },
+      awayTeam: { name: awayTeam.name, crestUrl: awayTeam.logo_url },
+      competition: m.competition_id ? { id: m.competition_id, name: competitionNameById[m.competition_id] } : null,
+    };
   }
 
   return { cleanup: null };

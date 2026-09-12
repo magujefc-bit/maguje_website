@@ -5,6 +5,7 @@ import { lazyImage, observeLazyImages } from '../components/lazy-image.js';
 import { injectStyle } from '../utils/inject-style.js';
 import { aboutHeader, clubProfileSubNav } from './club-shared.js';
 import { formatPlainText } from '../utils/format-text.js';
+import { skeletons } from '../components/skeletons.js';
 
 injectStyle('about-view', `
   .about-overview {
@@ -68,7 +69,7 @@ export async function aboutView() {
         class="about-overview"
         data-slot="content"
       >
-        <div class="skel skel-block" style="height:200px;"></div>
+        ${skeletons.clubGeneral()}
       </div>
     </div>
   `);

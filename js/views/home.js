@@ -73,9 +73,9 @@ export async function homeView() {
 
         <div data-slot="hero-wrap">${skeletons.heroCarousel()}</div>
 
-        <div class="home-events-section" data-slot="events-section" hidden></div>
+        <div class="home-events-section" data-slot="events-section">${skeletons.eventCard()}</div>
 
-        <div class="home-fixtures-section" data-slot="fixtures-section" hidden></div>
+        <div class="home-fixtures-section" data-slot="fixtures-section">${skeletons.kickoffPill()}${skeletons.fixtureCard()}</div>
 
         <section class="home-section" data-slot="spotlight-section">
           <div class="home-section__header">
@@ -83,7 +83,7 @@ export async function homeView() {
           </div>
           <div class="home-carousel-wrap" data-slot="spotlight-carousel-wrap">
             <div class="carousel" data-slot="spotlight-carousel">
-              <div class="carousel__track" data-track></div>
+              <div class="carousel__track" data-track>${skeletons.spotlightRow(1)}</div>
             </div>
           </div>
         </section>

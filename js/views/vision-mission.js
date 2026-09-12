@@ -3,13 +3,14 @@ import { viewContainer } from '../view-container.js';
 import { states } from '../components/states.js';
 import { visionMissionSection } from '../components/club-identity.js';
 import { clubProfileSubNav, aboutHeader } from './club-shared.js';
+import { skeletons } from '../components/skeletons.js';
 
 export async function visionMissionView() {
   await viewContainer.render(`
     <div class="container">
       ${aboutHeader('Vision & Mission')}
       ${clubProfileSubNav('mission-vision')}
-      <div style="padding-bottom: var(--sp-2xl);" data-slot="content"><div class="skel skel-block" style="height:200px;"></div></div>
+      <div style="padding-bottom: var(--sp-2xl);" data-slot="content">${skeletons.labeledTextBlocks(2)}</div>
     </div>`);
 
   const root = document.querySelector('#app');

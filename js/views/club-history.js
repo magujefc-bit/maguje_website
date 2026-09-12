@@ -3,13 +3,14 @@ import { viewContainer } from '../view-container.js';
 import { states } from '../components/states.js';
 import { clubProfileSubNav, aboutHeader } from './club-shared.js';
 import { formatPlainText } from '../utils/format-text.js';
+import { skeletons } from '../components/skeletons.js';
 
 export async function clubHistoryView() {
   await viewContainer.render(`
     <div class="container">
       ${aboutHeader('Club History')}
       ${clubProfileSubNav('history')}
-      <div style="padding-bottom: var(--sp-2xl); max-width: 68ch;" data-slot="content"><div class="skel skel-block" style="height:200px;"></div></div>
+      <div style="padding-bottom: var(--sp-2xl); max-width: 68ch;" data-slot="content">${skeletons.textBlock(6)}</div>
     </div>`);
 
   const root = document.querySelector('#app');

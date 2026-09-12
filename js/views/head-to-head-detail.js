@@ -68,7 +68,7 @@ export async function headToHeadDetailView(params) {
     const { data: matches, error: mErr } = await supabase
       .from("matches")
       .select(
-        "id, slug, match_date, our_score, opponent_score, opponent_team_id",
+        "id, slug, match_date, our_score, opponent_score, opponent_team_id, is_home, competition_id",
       )
       .eq("opponent_team_id", teamId)
       .eq("status", "completed")
@@ -77,6 +77,12 @@ export async function headToHeadDetailView(params) {
 
     if (mErr) throw mErr;
     const matchesWithOpp = await supabase.attachOpponents(matches || []);
+
+    const competitionIds = [...new Set(matchesWithOpp.map((m) => m.competition_id).filter(Boolean))];
+    const { data: competitionRows } = competitionIds.length
+      ? await supabase.from("competitions").select("id, name").in("id", competitionIds)
+      : { data: [] };
+    const competitionNameById = Object.fromEntries((competitionRows || []).map((c) => [c.id, c.name]));
 
     await viewContainer.render(`
       <div class="container">
@@ -116,7 +122,7 @@ export async function headToHeadDetailView(params) {
           }
         </div>
         <div class="h2h-matches" data-slot="matches">
-          ${matchesWithOpp.length ? matchesWithOpp.map((m) => matchCard(toExternalMatch({ ...m, status: "completed" }))).join("") : states.empty({ message: "No match history available." })}
+          ${matchesWithOpp.length ? matchesWithOpp.map((m) => matchCard({ ...toExternalMatch({ ...m, status: "completed" }), competition: m.competition_id ? { id: m.competition_id, name: competitionNameById[m.competition_id] } : null })).join("") : states.empty({ message: "No match history available." })}
         </div>
       </div>`);
     observeLazyImages(root);
