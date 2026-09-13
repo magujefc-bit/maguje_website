@@ -79,11 +79,6 @@ injectStyle('club-identity', `
     text-transform: uppercase;
   }
 
-  .official-card__bio {
-    font-size: var(--fs-sm);
-    line-height: var(--lh-normal);
-    color: rgba(16, 36, 26, 0.72);
-  }
 
   .honour-card {
     display: flex;
@@ -293,12 +288,6 @@ export function officialCard(official) {
         </div>
 
       </div>
-
-      ${
-        official.bio
-          ? `<p class="official-card__bio">${official.bio}</p>`
-          : ''
-      }
 
     </a>
   `;

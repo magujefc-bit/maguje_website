@@ -41,6 +41,12 @@ const NAV_SECTIONS = {
         { href: dashPath('/results'), icon: '📝', label: 'Results' },
       ],
     },
+    {
+      title: 'Club Management',
+      links: [
+        { href: dashPath('/players'), icon: '🧑‍🤝‍🧑', label: 'Players' },
+      ],
+    },
   ],
   content_manager: [
     {

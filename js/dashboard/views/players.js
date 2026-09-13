@@ -21,7 +21,7 @@ injectStyle('players-view', `
 `);
 
 export async function playersView() {
-  const admin = await requireAdmin(['senior_manager']);
+  const admin = await requireAdmin(['senior_manager', 'match_manager']);
   if (!admin) return { cleanup: null };
 
   let allPlayers = [];
@@ -169,14 +169,17 @@ export async function playersView() {
       ${item.bio ? `<p class="player-bio">${escapeHtml(item.bio)}</p>` : ''}
       <div class="player-actions">
         <button class="btn-secondary edit-btn">Edit</button>
-        <button class="btn-danger delete-btn">Delete</button>
+        <button class="btn-secondary toggle-active-btn">${item.is_active ? 'Deactivate' : 'Activate'}</button>
       </div>
     `;
 
     card.querySelector('.edit-btn').addEventListener('click', () => enterEditMode(card, item));
-    card.querySelector('.delete-btn').addEventListener('click', async () => {
-      if (!confirm(`Delete ${item.full_name}?`)) return;
-      const { error } = await supabaseClient.from('players').delete().eq('id', item.id);
+    card.querySelector('.toggle-active-btn').addEventListener('click', async () => {
+      // No hard delete anywhere in this view — deactivating hides a
+      // player from the public site while preserving their historical
+      // stats (goals, assists, appearances) intact, and the action is
+      // reversible by clicking the same button again.
+      const { error } = await supabaseClient.from('players').update({ is_active: !item.is_active }).eq('id', item.id);
       if (error) { alert(error.message); return; }
       loadPlayers();
     });

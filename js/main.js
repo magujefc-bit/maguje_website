@@ -3,6 +3,7 @@ import { crestLoader } from "./components/crest-loader.js";
 import { header } from "./components/header.js";
 import { footer } from "./components/footer.js";
 import { initInstallBanner } from "./components/install-banner.js";
+import { officialProfileView } from "./views/official-profile.js";
 
 import { withMobileGate } from "./utils/mobile-gate.js";
 
@@ -126,6 +127,8 @@ async function boot() {
     .add("/club-records", withMobileGate(clubAllTimeStatsView))
     .add("/club-records/honours", withMobileGate(clubHonoursView))
     .add("/officials", withMobileGate(clubOfficialsView))
+  .add("/officials", withMobileGate(clubOfficialsView))
+.add("/officials/:slug", withMobileGate(officialProfileView))
     .add("/events", withMobileGate(eventsView))
     .add("/events/:slug", withMobileGate(eventDetailsView))
     .add("/supporters", withMobileGate(supportersView))
