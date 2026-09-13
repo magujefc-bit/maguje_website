@@ -60,7 +60,7 @@ injectStyle(
     overflow-wrap: anywhere;
   }
 
-  .player-profile__team {
+  .player-profile__official-name {
     font-size: var(--fs-sm);
     font-weight: 600;
     line-height: 1.3;
@@ -87,6 +87,13 @@ injectStyle(
     color: var(--color-trophy-gold);
   }
 
+  .player-profile__role {
+    display: inline-block;
+    font-size: var(--fs-xs);
+    color: rgba(16, 36, 26, 0.6);
+    margin-left: var(--sp-xs);
+  }
+
   /* =========================================================
      BIO
      Full width below photo + details
@@ -103,22 +110,67 @@ injectStyle(
   }
 
   /* =========================================================
-     STATS
+     TABS
      ========================================================= */
 
-  .player-profile__stats {
+  .player-profile__tabs {
     grid-column: 1 / -1;
     width: 100%;
     min-width: 0;
     margin-top: var(--sp-md);
   }
 
+  .player-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--color-line);
+    margin-bottom: var(--sp-md);
+  }
+
+  .player-tab {
+    flex: 1;
+    text-align: center;
+    padding: var(--sp-sm);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    color: rgba(16, 36, 26, 0.5);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+  }
+
+  .player-tab--active {
+    color: var(--color-ridge-green);
+    border-bottom-color: var(--color-ridge-green);
+  }
+
+  .player-tab-panel[hidden] {
+    display: none;
+  }
+
+  /* =========================================================
+     STATS
+     ========================================================= */
+
   .player-stat-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-direction: column;
     gap: var(--sp-sm);
     width: 100%;
-    margin: 0 0 var(--sp-lg);
+  }
+
+  .player-stat-row {
+    display: grid;
+    gap: var(--sp-sm);
+    width: 100%;
+  }
+
+  .player-stat-row--three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .player-stat-row--two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .player-stat-card {
@@ -146,19 +198,32 @@ injectStyle(
   }
 
   /* =========================================================
-     MATCH HISTORY
+     GALLERY
      ========================================================= */
 
-  .player-profile__history {
-    grid-column: 1 / -1;
-    width: 100%;
-    min-width: 0;
+  .player-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-sm);
   }
 
-  .player-history__title {
-    font-size: var(--fs-lg);
-    margin-bottom: var(--sp-sm);
+  .player-gallery-item {
+    display: block;
+    aspect-ratio: 1 / 1;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--color-line);
   }
+
+  .player-gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* =========================================================
+     MATCH HISTORY
+     ========================================================= */
 
   .player-history-row {
     display: flex;
@@ -211,10 +276,6 @@ injectStyle(
       padding-top: var(--sp-md);
     }
 
-    .player-stat-grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-
     .player-stat-card {
       padding: var(--sp-lg);
     }
@@ -259,7 +320,7 @@ injectStyle(
       font-size: var(--fs-lg);
     }
 
-    .player-profile__team {
+    .player-profile__official-name {
       font-size: var(--fs-xs);
     }
 
@@ -295,7 +356,7 @@ export async function playerProfileView(params) {
     const { data: player, error } = await supabase
       .from("players")
       .select(
-        "id, slug, team_name, full_name, position, jersey_number, photo_url, bio",
+        "id, slug, team_name, full_name, position, player_role, jersey_number, photo_url, bio",
       )
       .eq("slug", slug)
       .maybeSingle();
@@ -344,6 +405,8 @@ export async function playerProfileView(params) {
 }
 
 async function renderProfile(root, player) {
+  const displayName = player.team_name || player.full_name;
+
   await viewContainer.render(`
     <div class="container">
 
@@ -356,7 +419,7 @@ async function renderProfile(root, player) {
         <div class="player-profile__photo">
           ${lazyImage({
             src: player.photo_url,
-            alt: player.full_name,
+            alt: displayName,
             aspect: "portrait",
           })}
         </div>
@@ -370,17 +433,17 @@ async function renderProfile(root, player) {
 
           <div class="player-profile__header">
 
-            <!-- Full Name -->
+            <!-- Field Name (primary) -->
             <h1 class="player-profile__name">
-              ${player.full_name}
+              ${displayName}
             </h1>
 
-            <!-- Team Name -->
+            <!-- Official Name (secondary, only shown when a field name exists) -->
             ${
               player.team_name
                 ? `
-                  <div class="player-profile__team">
-                    ${player.team_name}
+                  <div class="player-profile__official-name">
+                    ${player.full_name}
                   </div>
                 `
                 : ""
@@ -401,6 +464,17 @@ async function renderProfile(root, player) {
             <span class="player-profile__number">
               #${player.jersey_number ?? "–"}
             </span>
+
+            <!-- Role -->
+            ${
+              player.player_role
+                ? `
+                  <span class="player-profile__role">
+                    ${player.player_role}
+                  </span>
+                `
+                : ""
+            }
 
           </div>
 
@@ -423,29 +497,34 @@ async function renderProfile(root, player) {
         }
 
         <div style="margin-block: var(--sp-md);">
-          ${shareBar(window.location.origin + "/players/" + player.slug, player.full_name)}
+          ${shareBar(window.location.origin + "/players/" + player.slug, displayName)}
         </div>
 
         <!-- =================================================
-             STATS
+             TABS: Stats / Gallery / Match History
              ================================================= -->
 
-        <div
-          class="player-profile__stats"
-          data-slot="stats"
-        >
-          ${skeletons.standings(1)}
+        <div class="player-profile__tabs">
+
+          <div class="player-tabs">
+            <button type="button" class="player-tab player-tab--active" data-tab="stats">Stats</button>
+            <button type="button" class="player-tab" data-tab="gallery">Gallery</button>
+            <button type="button" class="player-tab" data-tab="history">Match History</button>
+          </div>
+
+          <div class="player-tab-panel" data-panel="stats">
+            <div data-slot="stats">${skeletons.standings(1)}</div>
+          </div>
+
+          <div class="player-tab-panel" data-panel="gallery" hidden>
+            <div data-slot="gallery">${skeletons.standings(1)}</div>
+          </div>
+
+          <div class="player-tab-panel" data-panel="history" hidden>
+            <div data-slot="history"></div>
+          </div>
+
         </div>
-
-
-        <!-- =================================================
-             MATCH HISTORY
-             ================================================= -->
-
-        <div
-          class="player-profile__history"
-          data-slot="history"
-        ></div>
 
       </div>
 
@@ -458,10 +537,75 @@ async function renderProfile(root, player) {
 
   bindShareBar(root);
 
-  await loadStatsAndHistory(
-    root,
-    player.id,
-  );
+  bindTabs(root);
+
+  await loadStatsAndHistory(root, player.id);
+  await loadGallery(root, player.id, displayName);
+}
+
+function bindTabs(root) {
+  const tabButtons = root.querySelectorAll(".player-tab");
+  const panels = {
+    stats: root.querySelector('[data-panel="stats"]'),
+    gallery: root.querySelector('[data-panel="gallery"]'),
+    history: root.querySelector('[data-panel="history"]'),
+  };
+
+  tabButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      tabButtons.forEach((b) => b.classList.remove("player-tab--active"));
+      btn.classList.add("player-tab--active");
+      const target = btn.dataset.tab;
+      Object.entries(panels).forEach(([key, panel]) => {
+        panel.hidden = key !== target;
+      });
+    });
+  });
+}
+
+async function loadGallery(root, playerId, displayName) {
+  const gallerySlot = root.querySelector('[data-slot="gallery"]');
+
+  try {
+    const { data, error } = await supabase
+      .from("media_participants")
+      .select("media:media_library(slug, url)")
+      .eq("participant_type", "player")
+      .eq("participant_id", playerId);
+
+    if (error) throw error;
+
+    const items = (data || [])
+      .map((row) => row.media)
+      .filter(Boolean);
+
+    if (!items.length) {
+      gallerySlot.innerHTML = states.empty({
+        message: `No featured image for ${displayName} yet.`,
+      });
+      return;
+    }
+
+    gallerySlot.innerHTML = `
+      <div class="player-gallery-grid">
+        ${items
+          .map(
+            (m) => `
+              <a href="/gallery/${m.slug}" class="player-gallery-item">
+                ${lazyImage({ src: m.url, alt: "", aspect: "square" })}
+              </a>
+            `,
+          )
+          .join("")}
+      </div>
+    `;
+
+    observeLazyImages(gallerySlot);
+  } catch (err) {
+    console.error("[player-profile] gallery failed:", err);
+    gallerySlot.innerHTML = states.error();
+    states.bindRetry(gallerySlot, () => loadGallery(root, playerId, displayName));
+  }
 }
 
 async function loadStatsAndHistory(
@@ -487,7 +631,7 @@ async function loadStatsAndHistory(
     } = await supabase
       .from("v_player_career_stats")
       .select(
-        "appearances, goals, assists, yellow_cards",
+        "appearances, goals, assists, yellow_cards, red_cards",
       )
       .eq("player_id", playerId)
       .maybeSingle();
@@ -500,6 +644,7 @@ async function loadStatsAndHistory(
         goals: 0,
         assists: 0,
         yellow_cards: 0,
+        red_cards: 0,
       },
     );
   } catch (err) {
@@ -524,33 +669,59 @@ async function loadStatsAndHistory(
 
   /* =========================================================
      MATCH HISTORY
+     Only matches where this player has a recorded goal,
+     assist, or card — a plain appearance with none of those
+     doesn't show up here.
      ========================================================= */
 
   try {
-    const {
-      data: appearances,
-      error: apErr,
-    } = await supabase
-      .from("v_player_appearances")
-      .select(
-        "goals, assists, match:matches(slug, match_date)",
-      )
-      .eq("player_id", playerId)
-      .limit(10);
+    const [{ data: appearances, error: apErr }, { data: cardRows, error: cardErr }] = await Promise.all([
+      supabase
+        .from("v_player_appearances")
+        .select(
+          "goals, assists, match:matches(slug, match_date)",
+        )
+        .eq("player_id", playerId)
+        .limit(30),
+      supabase
+        .from("match_cards")
+        .select("match_id, card_type")
+        .eq("player_id", playerId),
+    ]);
 
     if (apErr) throw apErr;
+    if (cardErr) throw cardErr;
 
-    if (!appearances?.length) {
-      historySlot.innerHTML = `
-        <h2 class="player-history__title">
-          Match History
-        </h2>
+    const cardedMatchIds = [...new Set((cardRows || []).map((r) => r.match_id))];
 
-        ${states.empty({
-          message:
-            "No appearances recorded yet.",
-        })}
-      `;
+    // Resolve carded match_ids to slugs, since v_player_appearances only
+    // gives us slugs, not match_id — then build a slug -> card_types map
+    // so historyRow() can show 🟨/🟥 alongside the goal/assist badge.
+    let cardTypesBySlug = new Map();
+    if (cardedMatchIds.length) {
+      const { data: cardedMatches } = await supabase
+        .from("matches")
+        .select("id, slug")
+        .in("id", cardedMatchIds);
+
+      const slugById = new Map((cardedMatches || []).map((m) => [m.id, m.slug]));
+
+      (cardRows || []).forEach((r) => {
+        const slug = slugById.get(r.match_id);
+        if (!slug) return;
+        if (!cardTypesBySlug.has(slug)) cardTypesBySlug.set(slug, []);
+        cardTypesBySlug.get(slug).push(r.card_type);
+      });
+    }
+
+    const relevant = (appearances || []).filter(
+      (a) => a.goals > 0 || a.assists > 0 || cardTypesBySlug.has(a.match?.slug),
+    );
+
+    if (!relevant.length) {
+      historySlot.innerHTML = states.empty({
+        message: "No goals, assists, or cards recorded yet.",
+      });
 
       return;
     }
@@ -561,7 +732,7 @@ async function loadStatsAndHistory(
 
     const slugs = Array.from(
       new Set(
-        appearances
+        relevant
           .map(
             (a) =>
               a.match?.slug,
@@ -599,7 +770,7 @@ async function loadStatsAndHistory(
        ======================================================= */
 
     const enriched =
-      appearances.map((a) => ({
+      relevant.map((a) => ({
         ...a,
 
         match: {
@@ -608,6 +779,8 @@ async function loadStatsAndHistory(
             a.match?.slug,
           ) || {}),
         },
+
+        cardTypes: cardTypesBySlug.get(a.match?.slug) || [],
       }));
 
     /* =======================================================
@@ -627,10 +800,6 @@ async function loadStatsAndHistory(
       );
 
     historySlot.innerHTML = `
-      <h2 class="player-history__title">
-        Match History
-      </h2>
-
       <div>
         ${sorted
           .map(historyRow)
@@ -643,13 +812,7 @@ async function loadStatsAndHistory(
       err,
     );
 
-    historySlot.innerHTML = `
-      <h2 class="player-history__title">
-        Match History
-      </h2>
-
-      ${states.error()}
-    `;
+    historySlot.innerHTML = states.error();
 
     states.bindRetry(
       historySlot,
@@ -663,54 +826,32 @@ async function loadStatsAndHistory(
 }
 
 function statCards(stats) {
-  const items = [
-    {
-      label: "Appearances",
-      value:
-        stats.appearances ?? 0,
-    },
-    {
-      label: "Goals",
-      value:
-        stats.goals ?? 0,
-    },
-    {
-      label: "Assists",
-      value:
-        stats.assists ?? 0,
-    },
-    {
-      label: "Yellow Cards",
-      value:
-        stats.yellow_cards ?? 0,
-    },
+  const row1 = [
+    { label: "Appearances", value: stats.appearances ?? 0 },
+    { label: "Goals", value: stats.goals ?? 0 },
+    { label: "Assists", value: stats.assists ?? 0 },
   ];
+
+  const row2 = [
+    { label: "Yellow Cards", value: stats.yellow_cards ?? 0 },
+    { label: "Red Cards", value: stats.red_cards ?? 0 },
+  ];
+
+  const card = (item) => `
+    <div class="player-stat-card">
+      <div class="player-stat-card__value">${item.value}</div>
+      <div class="player-stat-card__label">${item.label}</div>
+    </div>
+  `;
 
   return `
     <div class="player-stat-grid">
-
-      ${items
-        .map(
-          (item) => `
-            <div class="player-stat-card">
-
-              <div
-                class="player-stat-card__value"
-              >
-                ${item.value}
-              </div>
-
-              <div
-                class="player-stat-card__label"
-              >
-                ${item.label}
-              </div>
-
-            </div>
-          `,
-        )
-        .join("")}
-
+      <div class="player-stat-row player-stat-row--three">
+        ${row1.map(card).join("")}
+      </div>
+      <div class="player-stat-row player-stat-row--two">
+        ${row2.map(card).join("")}
+      </div>
     </div>
   `;
 }
@@ -731,6 +872,10 @@ function historyRow(a) {
       `${a.assists}A`,
     );
   }
+
+  (a.cardTypes || []).forEach((cardType) => {
+    contributions.push(cardType === "red" ? "🟥" : "🟨");
+  });
 
   return `
     <a
