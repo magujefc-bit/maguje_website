@@ -3,6 +3,7 @@ import { viewContainer } from '../view-container.js';
 import { states } from '../components/states.js';
 import { aboutHeader } from './club-shared.js';
 import { observeLazyImages } from '../components/lazy-image.js';
+import { officialsGrid } from '../components/club-identity.js';
 import { OFFICIAL_ROLES } from '../utils/official-roles.js';
 
 export async function clubOfficialsView() {
@@ -12,11 +13,10 @@ export async function clubOfficialsView() {
       ${aboutHeader('Club Officials')}
 
       <div
-        class="grid grid--4"
         style="padding-bottom: var(--sp-2xl);"
         data-slot="content"
       >
-        ${'<div class="skel skel-block" style="aspect-ratio:1/1;"></div>'.repeat(4)}
+        <div class="grid grid--4">${'<div class="skel skel-block" style="aspect-ratio:1/1;"></div>'.repeat(4)}</div>
       </div>
 
     </div>
@@ -28,13 +28,12 @@ export async function clubOfficialsView() {
   try {
     const { data, error } = await supabase
       .from('officials')
-      .select('full_name, official_role, photo_url')
+      .select('slug, full_name, official_role, photo_url, bio')
       .eq('is_active', true);
 
     if (error) throw error;
 
     if (!data.length) {
-      slot.className = '';
       slot.innerHTML = states.empty({
         message: 'Officials list coming soon.'
       });
@@ -56,33 +55,15 @@ export async function clubOfficialsView() {
       return a.full_name.localeCompare(b.full_name);
     });
 
-    slot.innerHTML = sorted.map(o => `
-      <div class="official-card">
-
-        <div class="official-card__photo">
-          <img
-            src="${o.photo_url || ''}"
-            alt="${o.full_name}"
-            loading="lazy"
-            decoding="async"
-            style="
-              width:100%;
-              height:100%;
-              object-fit:cover;
-            "
-          >
-        </div>
-
-        <span class="official-card__name">
-          ${o.full_name}
-        </span>
-
-        <span class="official-card__role">
-          ${o.official_role || ''}
-        </span>
-
-      </div>
-    `).join('');
+    slot.innerHTML = officialsGrid(
+      sorted.map((o) => ({
+        slug: o.slug,
+        name: o.full_name,
+        role: o.official_role,
+        photoUrl: o.photo_url,
+        bio: o.bio,
+      }))
+    );
 
     observeLazyImages(slot);
 

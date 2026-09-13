@@ -51,7 +51,7 @@ async function loadSquad(root) {
   try {
     let { data: players, error } = await supabase
       .from("players")
-      .select("id, slug, full_name, position, jersey_number, photo_url")
+      .select("id, slug, full_name, team_name, position, player_role, jersey_number, photo_url")
       .eq("is_active", true)
       .order("jersey_number", { ascending: true, nullsFirst: false });
     if (error) throw error;
@@ -60,7 +60,7 @@ async function loadSquad(root) {
     if (!players.length) {
       const { data: allPlayers, error: allErr } = await supabase
         .from("players")
-        .select("id, slug, full_name, position, jersey_number, photo_url")
+        .select("id, slug, full_name, team_name, position, player_role, jersey_number, photo_url")
         .order("jersey_number", { ascending: true, nullsFirst: false });
       if (allErr) throw allErr;
       players = allPlayers || [];
@@ -80,6 +80,8 @@ async function loadSquad(root) {
       byPosition[pos].push({
         slug: p.slug,
         name: p.full_name,
+        fieldName: p.team_name,
+        role: p.player_role,
         position: p.position,
         jerseyNumber: p.jersey_number,
         photoUrl: p.photo_url,

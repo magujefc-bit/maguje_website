@@ -48,6 +48,29 @@ injectStyle('club-identity', `
     line-height: var(--lh-tight);
   }
 
+.official-card__photo {
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.official-card__role {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--color-ridge-green);
+  text-transform: uppercase;
+  line-height: var(--lh-tight);
+}
+
+.official-card__name {
+  margin-top: var(--sp-3xs);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+
   .official-card__role {
     margin-top: var(--sp-3xs);
     font-family: var(--font-mono);
@@ -245,7 +268,7 @@ injectStyle('club-identity', `
 
 export function officialCard(official) {
   return `
-    <div class="official-card">
+    <a href="/officials/${official.slug}" class="official-card">
 
       <div class="official-card__top">
 
@@ -259,12 +282,12 @@ export function officialCard(official) {
 
         <div class="official-card__identity">
 
-          <div class="official-card__name">
-            ${official.name}
-          </div>
-
           <div class="official-card__role">
             ${official.role || ''}
+          </div>
+
+          <div class="official-card__name">
+            ${official.name}
           </div>
 
         </div>
@@ -277,7 +300,7 @@ export function officialCard(official) {
           : ''
       }
 
-    </div>
+    </a>
   `;
 }
 

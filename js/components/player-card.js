@@ -69,6 +69,13 @@ injectStyle('player-card', `
     line-height: var(--lh-tight);
   }
 
+  .player-card__official-name {
+    margin-top: 1px;
+    font-size: var(--fs-xs);
+    line-height: var(--lh-tight);
+    color: rgba(16, 36, 26, 0.6);
+  }
+
   .player-card__position {
     margin-top: var(--sp-3xs);
     font-family: var(--font-mono);
@@ -97,18 +104,24 @@ export function playerCard(player) {
 
           ${lazyImage({
             src: player.photoUrl,
-            alt: player.name,
+            alt: player.fieldName || player.name,
             aspect: 'square'
           })}
         </div>
 
         <div class="player-card__identity">
           <div class="player-card__name">
-            ${player.name}
+            ${player.fieldName || player.name}
           </div>
 
+          ${
+            player.fieldName
+              ? `<div class="player-card__official-name">${player.name}</div>`
+              : ''
+          }
+
           <div class="player-card__position">
-            ${player.position || ''}
+            ${[player.position, player.role].filter(Boolean).join(' · ')}
           </div>
         </div>
 
