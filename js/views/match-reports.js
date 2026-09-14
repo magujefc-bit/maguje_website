@@ -34,8 +34,8 @@ export async function matchReportsView() {
   async function loadReports(root) {
     const gridSlot = root.querySelector('[data-slot="grid"]');
     try {
-      const { data, error } = await supabase.from('match_report_posts').select('id, slug, title, body, created_at, cover_overlay_id').order('created_at', { ascending: false });
-      if (error) throw error;
+      const { data, error } = await supabase.from('match_report_posts').select('id, slug, title, body, created_at, cover_overlay_id').eq('is_active', true).order('created_at', { ascending: false });
+            if (error) throw error;
       allPosts = data;
       await renderGrid(root);
     } catch (err) {

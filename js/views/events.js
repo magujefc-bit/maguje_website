@@ -80,6 +80,7 @@ async function loadEvents(root) {
      *
      * because we need both upcoming and past events.
      */
+    
     const { data, error } = await supabase
       .from('event_posts')
       .select(`
@@ -89,9 +90,8 @@ async function loadEvents(root) {
         event_date,
         event_time
       `)
+      .eq('is_active', true)
       .order('event_date', { ascending: true })
-      .order('event_time', { ascending: true });
-
     if (error) throw error;
 
     if (!data || !data.length) {

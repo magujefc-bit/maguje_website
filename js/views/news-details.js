@@ -16,8 +16,8 @@ export async function newsDetailsView(params) {
   const root = document.querySelector('#app');
 
   try {
-    const { data: post, error } = await supabase.from('news_posts').select('id, slug, title, body, created_at, cover_overlay_id').eq('slug', slug).maybeSingle();
-    if (error) throw error;
+    const { data: post, error } = await supabase.from('news_posts').select('id, slug, title, body, created_at, cover_overlay_id').eq('slug', slug).eq('is_active', true).maybeSingle();
+        if (error) throw error;
 
     if (!post) {
       await viewContainer.render(`<div class="container section" style="text-align:center;"><h1 class="text-display-xl">Article not found</h1><a href="/news" class="btn btn--primary" style="margin-top: var(--sp-md);">Back to News</a></div>`);

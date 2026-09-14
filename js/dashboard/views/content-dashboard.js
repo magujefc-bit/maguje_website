@@ -1304,6 +1304,10 @@ export async function contentDashboardView(params, query) {
           · ${new Date(post.created_at).toLocaleDateString()}
         </p>
 
+  <div style="margin: 4px 0;">
+          <span class="status-pill ${post.is_active ? 'status-active' : 'status-inactive'}">${post.is_active ? 'Active' : 'Inactive'}</span>
+        </div>
+
         <div class="post-actions">
 
 <button
@@ -1313,9 +1317,9 @@ export async function contentDashboardView(params, query) {
 </button>
 
           <button
-            class="btn-danger delete-post-btn"
+            class="btn-secondary toggle-active-btn"
           >
-            Delete
+            ${post.is_active ? 'Deactivate' : 'Activate'}
           </button>
 
         </div>
@@ -1323,48 +1327,20 @@ export async function contentDashboardView(params, query) {
       </div>
     `;
 
-    // ----------------------------------------------
-    // Edit button
-    // ----------------------------------------------
-
     card
       .querySelector('.edit-post-btn')
       .addEventListener('click', () => {
         editPost(post);
       });
 
-    // ----------------------------------------------
-    // Delete button
-    // ----------------------------------------------
-
     card
-      .querySelector('.delete-post-btn')
+      .querySelector('.toggle-active-btn')
       .addEventListener('click', async () => {
-
-        if (
-          !confirm(
-            `Delete "${post.title}"?`
-          )
-        ) {
-          return;
-        }
-
-        const { error: mediaDeleteError } =
-          await supabaseClient
-            .from('post_media')
-            .delete()
-            .eq('post_type', currentType)
-            .eq('post_id', post.id);
-
-        if (mediaDeleteError) {
-          alert(mediaDeleteError.message);
-          return;
-        }
 
         const { error } =
           await supabaseClient
             .from(config.table)
-            .delete()
+            .update({ is_active: !post.is_active })
             .eq('id', post.id);
 
         if (error) {
@@ -1372,8 +1348,6 @@ export async function contentDashboardView(params, query) {
           return;
         }
 
-        // If the deleted post was being edited,
-        // return to create mode.
         if (editingPostId === post.id) {
           resetForm();
         }

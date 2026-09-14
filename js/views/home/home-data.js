@@ -133,9 +133,9 @@ export async function fetchEventsData() {
     const { data, error } = await supabase
       .from("event_posts")
       .select("slug, title, location, event_date, event_time")
+      .eq("is_active", true)
       .order("event_date", { ascending: true })
       .order("event_time", { ascending: true });
-
     if (error) throw error;
     if (!data?.length) return [];
 

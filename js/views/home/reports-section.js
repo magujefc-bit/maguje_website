@@ -46,6 +46,7 @@ export async function renderReportsSection(root) {
     const { data, error } = await supabase
       .from("match_report_posts")
       .select("id, slug, title, body, created_at, cover_overlay_id")
+      .eq("is_active", true)
       .order("created_at", { ascending: false })
       .limit(MAX_MATCH_REPORTS);
 

@@ -56,6 +56,7 @@ export async function renderNewsSection(root) {
     const { data, error } = await supabase
       .from("news_posts")
       .select("id, slug, title, body, created_at, cover_overlay_id")
+      .eq("is_active", true)
       .order("created_at", { ascending: false })
       .limit(MAX_NEWS);
 
