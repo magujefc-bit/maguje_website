@@ -55,6 +55,7 @@ const NAV_SECTIONS = {
         { href: dashPath('/content?tab=matches'), icon: '⚽', label: 'Match Reports' },
         { href: dashPath('/content?tab=events'), icon: '📆', label: 'Events' },
         { href: dashPath('/content?tab=news'), icon: '📰', label: 'News' },
+        { href: dashPath('/content?tab=media'), icon: '🖼️', label: 'Media Library' },
       ],
     },
   ],

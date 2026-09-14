@@ -496,7 +496,7 @@ async function renderProfile(root, player) {
             : ""
         }
 
-        <div style="margin-block: var(--sp-md);">
+        <div style="margin-top: var(--sp-sm);">
           ${shareBar(window.location.origin + "/players/" + player.slug, displayName)}
         </div>
 
