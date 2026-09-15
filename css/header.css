@@ -30,7 +30,7 @@
 
 .header__wordmark {
   font-size: var(--fs-md);
-  color: var(--color-ridge-green);
+  color: #046926;
   white-space: nowrap;
 }
 
@@ -107,6 +107,12 @@
   transition: background var(--dur-fast) var(--ease-standard);
 }
 
+.header__search-btn svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
 .header__search-btn:hover,
 .header__search-btn.nav__link--active {
   background: rgba(16,155,69,0.08);
@@ -153,7 +159,7 @@
   right: 0;
   bottom: 0;
   width: min(240px, 72vw);
-  background: var(--color-pitch-shadow);
+  background: #046926;
   z-index: var(--z-nav);
   transform: translateX(100%);
   transition: transform var(--dur-base) var(--ease-standard);
@@ -228,4 +234,11 @@
   .mobile-menu__backdrop {
     transition: none;
   }
+}
+/* ---- Header actions (search + hamburger, grouped) ---- */
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 }

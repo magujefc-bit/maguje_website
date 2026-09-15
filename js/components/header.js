@@ -120,15 +120,21 @@ class Header {
           </ul>
         </nav>
 
-        <div class="header__actions">
+<div class="header__actions">
           <a
             href="/search"
             class="header__search-btn"
             data-path="/search"
             aria-label="Search"
           >
-            <span aria-hidden="true">🔍</span>
+            <span aria-hidden="true">
+              <svg viewBox="0 0 20 20" fill="none" stroke="#099220" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="8.5" cy="8.5" r="5.5"/>
+                <path d="M16.5 16.5 12.7 12.7"/>
+              </svg>
+            </span>
           </a>
+        </div>
 
           <button
             type="button"

@@ -63,6 +63,7 @@ import { authRecordsView as dashAuthRecordsView } from "./dashboard/views/auth-r
 import { systemLogView as dashSystemLogView } from "./dashboard/views/system-log.js";
 import { playersView as dashPlayersView } from "./dashboard/views/players.js";
 import { officialsView as dashOfficialsView } from "./dashboard/views/officials.js";
+import { messagesView as dashMessagesView } from "./dashboard/views/messages.js";
 import { clubProfileView as dashClubProfileView } from "./dashboard/views/club-profile.js";
 import { clubRecordsView as dashClubRecordsView } from "./dashboard/views/club-records.js";
 import { competitionsView as dashCompetitionsView } from "./dashboard/views/competitions.js";
@@ -150,6 +151,7 @@ async function boot() {
     .add(`${DASH_BASE_PATH}/officials`, dashOfficialsView)
     .add(`${DASH_BASE_PATH}/club-profile`, dashClubProfileView)
     .add(`${DASH_BASE_PATH}/club-records`, dashClubRecordsView)
+  .add(`${DASH_BASE_PATH}/messages`, dashMessagesView)
     .add(`${DASH_BASE_PATH}/competitions`, dashCompetitionsView)
     .add(`${DASH_BASE_PATH}/competitions/detail`, dashCompetitionDetailView)
     .add(`${DASH_BASE_PATH}/match-center`, dashMatchCenterView)
