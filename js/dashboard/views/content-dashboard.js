@@ -269,17 +269,36 @@ const TAB_QUERY_MAP = {
   media: 'media'
 };
 
-export async function contentDashboardView(params, query) {
-  const admin = await requireAdmin(['content_manager']);
-  if (!admin) return { cleanup: null };
+// News is the one post type every admin role can write — Events, Match
+// Reports, and Media Library stay content_manager-only. Keep this in sync
+// with the RLS policies on news_posts / post_media / media_library.
+const NEWS_WRITER_ROLES = [
+  'super_admin',
+  'senior_manager',
+  'match_manager',
+  'content_manager'
+];
 
-  const currentType = TAB_QUERY_MAP[query.get('tab')] || 'news';
+export async function contentDashboardView(params, query) {
+  const currentType =
+    TAB_QUERY_MAP[query.get('tab')] || 'news';
+
+  const allowedRoles =
+    currentType === 'news'
+      ? NEWS_WRITER_ROLES
+      : ['content_manager'];
+
+  const admin =
+    await requireAdmin(allowedRoles);
+
+  if (!admin) return { cleanup: null };
 
   if (currentType === 'media') {
     return renderMediaLibraryView();
   }
 
   const config = POST_TYPE_CONFIG[currentType];
+
   const IMAGE_COUNT = config.imageCount;
 
   let selectedImages = new Array(IMAGE_COUNT).fill(null);
