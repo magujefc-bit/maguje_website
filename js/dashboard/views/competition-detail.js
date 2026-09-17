@@ -71,6 +71,10 @@ export async function competitionDetailView(params, query) {
         </div>
       </div>
       <div id="tournament-fields-slot"></div>
+      <div class="checkbox-row" style="margin-bottom: 1rem;">
+        <input type="checkbox" id="new-content-manager-managed">
+        <label for="new-content-manager-managed" style="margin:0;">Allow Content Manager to handle live/results for this match</label>
+      </div>
       <button id="create-match-btn" class="btn-primary">Add Match</button>
       <span id="create-match-status" class="save-status"></span>
     </div>
@@ -438,7 +442,14 @@ export async function competitionDetailView(params, query) {
     statusEl.classList.remove('error');
 
     try {
-      let payload = { competition_id: competitionId, match_date, match_time, venue, status: 'scheduled' };
+      let payload = {
+        competition_id: competitionId,
+        match_date,
+        match_time,
+        venue,
+        status: 'scheduled',
+        content_manager_managed: document.getElementById('new-content-manager-managed').checked,
+      };
 
       if (isClubName(homeName) || isClubName(awayName)) {
         payload.is_internal = true;
@@ -472,6 +483,7 @@ export async function competitionDetailView(params, query) {
       document.getElementById('new-venue-input').value = '';
       document.getElementById('new-date-input').value = '';
       document.getElementById('new-time-input').value = '';
+      document.getElementById('new-content-manager-managed').checked = false;
       if (isTournament()) {
         document.getElementById('new-stage-input').value = '';
         document.getElementById('new-group-input').value = '';
@@ -647,6 +659,10 @@ export async function competitionDetailView(params, query) {
         <div></div>
       </div>
       ${tournamentFieldsHtmlForEdit(m)}
+      <div class="checkbox-row" style="margin-bottom: 1rem;">
+        <input type="checkbox" class="edit-content-manager-managed" ${m.content_manager_managed ? 'checked' : ''}>
+        <label style="margin:0;">Allow Content Manager to handle live/results for this match</label>
+      </div>
       <div class="item-actions">
         <button class="btn-primary save-match-btn">Save</button>
         <button class="btn-secondary cancel-match-btn">Cancel</button>
@@ -674,7 +690,13 @@ export async function competitionDetailView(params, query) {
       if (isClubName(newHomeName) && isClubName(newAwayName)) { statusEl.textContent = "Your club can't play itself."; statusEl.classList.add('error'); return; }
 
       try {
-        let payload = { venue, match_date, match_time, status };
+        let payload = {
+          venue,
+          match_date,
+          match_time,
+          status,
+          content_manager_managed: card.querySelector('.edit-content-manager-managed').checked,
+        };
 
         if (isClubName(newHomeName) || isClubName(newAwayName)) {
           payload.is_internal = true;
