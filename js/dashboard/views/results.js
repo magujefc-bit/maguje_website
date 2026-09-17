@@ -520,6 +520,25 @@ export async function resultsView(params, query) {
 
       </div>
 
+
+      <!-- ===================================================
+           NOT DELEGATED / OUTSIDE WINDOW
+           =================================================== -->
+
+      <div
+        class="card hidden"
+        id="not-available-card"
+      >
+
+        <p class="empty-msg">
+          This match isn't available for you to manage
+          right now — either it hasn't been delegated to
+          you, or it's outside the time window for
+          recording or going live.
+        </p>
+
+      </div>
+
     </div>
   `);
 
@@ -624,6 +643,98 @@ export async function resultsView(params, query) {
     return (
       scheduledDateTime(m).getTime() <=
       Date.now()
+    );
+  }
+
+  // =========================================================
+  // DELEGATION / VISIBILITY WINDOW
+  // =========================================================
+  //
+  // A manager should only ever see, in this dashboard, matches
+  // that were delegated to them, and only for a bounded window
+  // of time around kickoff:
+  //   - not visible until 10 minutes before kickoff
+  //   - visible during and after kickoff indefinitely, as long
+  //     as the result hasn't been recorded yet
+  //   - once the result IS recorded, visible for only 1 more
+  //     hour, then it drops off the dashboard
+  //
+  // NOTE on managerHasFullAccess(): this assumes requireAdmin()
+  // returns either `admin.role` (a string) or `admin.roles` (an
+  // array). Adjust this one function if the actual shape from
+  // auth-gate.js is different — everything else depends on it.
+
+  function managerHasFullAccess(adminUser) {
+
+    const roles =
+      Array.isArray(adminUser.roles)
+        ? adminUser.roles
+        : (
+            adminUser.role
+              ? [adminUser.role]
+              : []
+          );
+
+    return roles.includes('match_manager');
+  }
+
+  function isDelegatedToManager(m) {
+
+    // match_manager can see/manage everything;
+    // content_manager only sees matches explicitly
+    // delegated to them via `content_manager_managed`.
+    if (managerHasFullAccess(admin)) {
+      return true;
+    }
+
+    return !!m.content_manager_managed;
+  }
+
+  function isWithinActionWindow(m) {
+
+    const kickoffMs =
+      scheduledDateTime(m).getTime();
+
+    const tenMinBeforeKickoffMs =
+      kickoffMs - 10 * 60 * 1000;
+
+    const now = Date.now();
+
+    if (now < tenMinBeforeKickoffMs) {
+
+      // Too early — the 10-minute
+      // pre-kickoff window hasn't opened yet.
+      return false;
+    }
+
+    if (m.status === 'completed') {
+
+      // NOTE: assumes a Supabase `updated_at` column on
+      // `matches` reflecting when the result was recorded.
+      // Swap this for the real column if it's named
+      // differently (e.g. a dedicated `completed_at`).
+      const recordedAtMs =
+        new Date(
+          m.updated_at || m.match_date
+        ).getTime();
+
+      return (
+        now - recordedAtMs <=
+        60 * 60 * 1000
+      );
+    }
+
+    // Kicked off (or later) but the result hasn't been
+    // recorded yet — stays visible indefinitely until
+    // someone records it.
+    return true;
+  }
+
+  function isVisibleToManager(m) {
+
+    return (
+      isDelegatedToManager(m) &&
+      isWithinActionWindow(m)
     );
   }
 
@@ -922,8 +1033,25 @@ export async function resultsView(params, query) {
       return;
     }
 
+    const visibleMatches =
+      data.filter(m =>
+        isVisibleToManager(m)
+      );
+
+    if (!visibleMatches.length) {
+
+      container.innerHTML = `
+        <div class="empty-msg">
+          No matches assigned to you right
+          now in this competition.
+        </div>
+      `;
+
+      return;
+    }
+
     const sorted =
-      [...data].sort(
+      [...visibleMatches].sort(
         (a, b) =>
           scheduledDateTime(b) -
           scheduledDateTime(a)
@@ -1168,6 +1296,23 @@ export async function resultsView(params, query) {
     if (!selectedCompetitionId) {
       selectedCompetitionId =
         currentMatch.competition_id;
+    }
+
+    if (!isVisibleToManager(currentMatch)) {
+
+      document.getElementById(
+        'form-title'
+      ).textContent =
+        'Not available';
+
+      document
+        .getElementById(
+          'not-available-card'
+        )
+        .classList
+        .remove('hidden');
+
+      return;
     }
 
     if (currentMatch.status === 'completed') {
