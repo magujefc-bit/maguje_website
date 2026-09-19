@@ -3,10 +3,14 @@ import { viewContainer } from "../view-container.js";
 import { skeletons } from "../components/skeletons.js";
 import { states } from "../components/states.js";
 import { matchCard } from "../components/match-card.js";
-import { filterBar, bindFilterBar } from "../components/controls.js";
 import { observeLazyImages } from "../components/lazy-image.js";
 import { injectStyle } from "../utils/inject-style.js";
 import { combineDateTime } from "./home.js";
+import {
+  seasonCompetitionFilter,
+  bindSeasonCompetitionFilter,
+  mostRecentSeason,
+} from "../components/season-competition-filter.js";
 
 injectStyle(
   "fixtures-view",
@@ -23,6 +27,8 @@ injectStyle(
 export async function fixturesView() {
   let allFixtures = [];
   let allResults = [];
+  let competitions = [];
+  let activeSeason = null;
   let activeCompetitionId = "all";
 
   await viewContainer.render(`
@@ -44,7 +50,18 @@ export async function fixturesView() {
 
   async function loadFixtures(root) {
     const filterSlot = root.querySelector('[data-slot="filter"]');
+
     try {
+      // Fetch the full competitions list independently of match data, so a
+      // competition with zero fixtures/results still shows up in the filter.
+      const { data: competitionsData, error: compError } = await supabase
+        .from("competitions")
+        .select("id, name, season")
+        .order("season", { ascending: false })
+        .order("name", { ascending: true });
+      if (compError) throw compError;
+      competitions = competitionsData || [];
+
       const { data, error } = await supabase
         .from("v_fixture_results_match_rows")
         .select(
@@ -76,33 +93,26 @@ export async function fixturesView() {
       allFixtures = rows
         .filter((m) => m.status === "scheduled")
         .map((m) => ({ ...m, status: "scheduled" }));
+
       allResults = rows
         .filter((m) => m.status === "completed")
         .map((m) => ({ ...m, status: "completed" }));
 
-      const competitions = uniqueCompetitions(allFixtures.concat(allResults));
-      if (competitions.length > 1) {
-        filterSlot.innerHTML = filterBar([
-          { label: "All", value: "all", active: true },
-          ...competitions.map((c) => ({
-            label: c.name,
-            value: c.id,
-            active: false,
-          })),
-        ]);
-        bindFilterBar(filterSlot, (value) => {
-          activeCompetitionId = value;
-          filterSlot
-            .querySelectorAll(".filter-chip")
-            .forEach((chip) =>
-              chip.classList.toggle(
-                "filter-chip--active",
-                chip.dataset.value === value,
-              ),
-            );
+      if (competitions.length > 0) {
+        activeSeason = mostRecentSeason(competitions);
+
+        filterSlot.innerHTML = seasonCompetitionFilter(competitions, {
+          activeSeason,
+          activeCompetitionId,
+        });
+
+        bindSeasonCompetitionFilter(filterSlot, competitions, (season, competitionId) => {
+          activeSeason = season;
+          activeCompetitionId = competitionId;
           renderLists(root);
         });
       }
+
       renderLists(root);
     } catch (err) {
       console.error("[fixtures] load failed:", err);
@@ -113,15 +123,20 @@ export async function fixturesView() {
     }
   }
 
+  function matchesActiveFilter(m) {
+    if (!activeSeason) return true;
+    if (activeCompetitionId !== "all") return m.competition_id === activeCompetitionId;
+
+    const comp = competitions.find((c) => c.id === m.competition_id);
+    return comp ? comp.season === activeSeason : false;
+  }
+
   function renderLists(root) {
     const upcomingSlot = root.querySelector('[data-slot="upcoming"]');
     const pastSlot = root.querySelector('[data-slot="past"]');
 
-    // Render upcoming fixtures
-    const filtered =
-      activeCompetitionId === "all"
-        ? allFixtures
-        : allFixtures.filter((m) => m.competition_id === activeCompetitionId);
+    const filtered = allFixtures.filter(matchesActiveFilter);
+
     if (!filtered.length) {
       upcomingSlot.innerHTML = states.empty({
         message:
@@ -134,11 +149,8 @@ export async function fixturesView() {
     }
     observeLazyImages(upcomingSlot);
 
-    // Render past results
-    const pastFiltered =
-      activeCompetitionId === "all"
-        ? allResults
-        : allResults.filter((m) => m.competition_id === activeCompetitionId);
+    const pastFiltered = allResults.filter(matchesActiveFilter);
+
     if (!pastFiltered.length) {
       pastSlot.innerHTML = states.empty({
         message:
@@ -151,13 +163,4 @@ export async function fixturesView() {
     }
     observeLazyImages(pastSlot);
   }
-}
-
-function uniqueCompetitions(matches) {
-  const map = new Map();
-  matches.forEach((m) => {
-    if (m.competition && !map.has(m.competition.id))
-      map.set(m.competition.id, m.competition);
-  });
-  return Array.from(map.values());
 }

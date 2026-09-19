@@ -3,9 +3,13 @@ import { viewContainer } from "../view-container.js";
 import { skeletons } from "../components/skeletons.js";
 import { states } from "../components/states.js";
 import { matchCard } from "../components/match-card.js";
-import { filterBar, bindFilterBar } from "../components/controls.js";
 import { observeLazyImages } from "../components/lazy-image.js";
 import { injectStyle } from "../utils/inject-style.js";
+import {
+  seasonCompetitionFilter,
+  bindSeasonCompetitionFilter,
+  mostRecentSeason,
+} from "../components/season-competition-filter.js";
 
 injectStyle(
   "results-view",
@@ -20,6 +24,8 @@ const PAGE_SIZE = 15;
 
 export async function resultsView() {
   let allResults = [];
+  let competitions = [];
+  let activeSeason = null;
   let activeCompetitionId = "all";
   let visibleCount = PAGE_SIZE;
 
@@ -37,7 +43,18 @@ export async function resultsView() {
   async function loadResults(root) {
     const listSlot = root.querySelector('[data-slot="list"]');
     const filterSlot = root.querySelector('[data-slot="filter"]');
+
     try {
+      // Fetch the full competitions list independently of match data, so a
+      // competition with zero results still shows up in the filter.
+      const { data: competitionsData, error: compError } = await supabase
+        .from("competitions")
+        .select("id, name, season")
+        .order("season", { ascending: false })
+        .order("name", { ascending: true });
+      if (compError) throw compError;
+      competitions = competitionsData || [];
+
       const { data, error } = await supabase
         .from("v_fixture_results_match_rows")
         .select(
@@ -67,30 +84,22 @@ export async function resultsView() {
         kickoffAt: combineDateTime(m.match_date, m.match_time),
       }));
 
-      const competitions = uniqueCompetitions(allResults);
-      if (competitions.length > 1) {
-        filterSlot.innerHTML = filterBar([
-          { label: "All", value: "all", active: true },
-          ...competitions.map((c) => ({
-            label: c.name,
-            value: c.id,
-            active: false,
-          })),
-        ]);
-        bindFilterBar(filterSlot, (value) => {
-          activeCompetitionId = value;
+      if (competitions.length > 0) {
+        activeSeason = mostRecentSeason(competitions);
+
+        filterSlot.innerHTML = seasonCompetitionFilter(competitions, {
+          activeSeason,
+          activeCompetitionId,
+        });
+
+        bindSeasonCompetitionFilter(filterSlot, competitions, (season, competitionId) => {
+          activeSeason = season;
+          activeCompetitionId = competitionId;
           visibleCount = PAGE_SIZE;
-          filterSlot
-            .querySelectorAll(".filter-chip")
-            .forEach((chip) =>
-              chip.classList.toggle(
-                "filter-chip--active",
-                chip.dataset.value === value,
-              ),
-            );
           renderList(root);
         });
       }
+
       renderList(root);
     } catch (err) {
       console.error("[results] load failed:", err);
@@ -99,13 +108,19 @@ export async function resultsView() {
     }
   }
 
+  function matchesActiveFilter(m) {
+    if (!activeSeason) return true;
+    if (activeCompetitionId !== "all") return m.competition_id === activeCompetitionId;
+
+    const comp = competitions.find((c) => c.id === m.competition_id);
+    return comp ? comp.season === activeSeason : false;
+  }
+
   function renderList(root) {
     const listSlot = root.querySelector('[data-slot="list"]');
     const loadMoreSlot = root.querySelector('[data-slot="load-more"]');
-    const filtered =
-      activeCompetitionId === "all"
-        ? allResults
-        : allResults.filter((m) => m.competition_id === activeCompetitionId);
+    const filtered = allResults.filter(matchesActiveFilter);
+
     if (!filtered.length) {
       listSlot.innerHTML = states.empty({
         message:
@@ -116,9 +131,11 @@ export async function resultsView() {
       loadMoreSlot.innerHTML = "";
       return;
     }
+
     const visible = filtered.slice(0, visibleCount);
     listSlot.innerHTML = visible.map((m) => matchCard(m)).join("");
     observeLazyImages(listSlot);
+
     if (filtered.length > visibleCount) {
       loadMoreSlot.innerHTML = `<div class="flex justify-center" style="padding-block: var(--sp-md);"><button type="button" class="btn btn--secondary" data-load-more>Load more results</button></div>`;
       loadMoreSlot
@@ -136,13 +153,4 @@ export async function resultsView() {
 function combineDateTime(date, time) {
   if (!date) return null;
   return `${date}T${time || "00:00:00"}`;
-}
-
-function uniqueCompetitions(matches) {
-  const map = new Map();
-  matches.forEach((m) => {
-    if (m.competition && !map.has(m.competition.id))
-      map.set(m.competition.id, m.competition);
-  });
-  return Array.from(map.values());
 }

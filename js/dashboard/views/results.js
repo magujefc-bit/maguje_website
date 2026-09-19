@@ -98,6 +98,17 @@ injectStyle('results-view', `
     margin-top: 2px;
   }
 
+  .match-competition-tag {
+    display: inline-block;
+    background: #eaf6ee;
+    color: #0d7f39;
+    font-weight: 700;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    margin-right: 4px;
+  }
+
   .status-upcoming {
     background: #f0f0f0;
     color: #777;
@@ -203,6 +214,7 @@ export async function resultsView(params, query) {
   let allTeams = [];
   let allCompetitions = [];
   let allPlayers = [];
+  let allVisibleMatches = [];
 
   let ourClubName = 'Our Club';
   let currentMatch = null;
@@ -754,21 +766,16 @@ export async function resultsView(params, query) {
       .classList
       .add('hidden');
 
-    if (
-      !selectedCompetitionId &&
-      allCompetitions.length
-    ) {
-      selectedCompetitionId =
-        allCompetitions[0].id;
-    }
+    // "All" (an empty selectedCompetitionId) is the default landing
+    // view — every match visible to this admin, tagged with its own
+    // competition, rather than picking one competition to start on.
+
+    await loadVisibleMatches();
 
     renderCompetitionNav();
+    renderMatchesList();
 
-    if (selectedCompetitionId) {
-
-      await loadStandings();
-      await loadCompetitionMatches();
-    }
+    await loadStandings();
   }
 
   function renderCompetitionNav() {
@@ -776,19 +783,45 @@ export async function resultsView(params, query) {
     const nav =
       document.getElementById('comp-nav');
 
-    if (!allCompetitions.length) {
+    const visibleCompetitionIds =
+      new Set(
+        allVisibleMatches.map(
+          m => m.competition_id
+        )
+      );
+
+    const relevantCompetitions =
+      allCompetitions.filter(c =>
+        visibleCompetitionIds.has(c.id)
+      );
+
+    if (!relevantCompetitions.length) {
 
       nav.innerHTML = `
         <span class="empty-msg">
-          No competitions yet
+          No matches assigned to you right now
         </span>
       `;
 
       return;
     }
 
-    nav.innerHTML =
-      allCompetitions
+    const allPillHtml = `
+      <a
+        href="#"
+        class="comp-nav-item ${
+          !selectedCompetitionId
+            ? 'active'
+            : ''
+        }"
+        data-id=""
+      >
+        All
+      </a>
+    `;
+
+    const competitionPillsHtml =
+      relevantCompetitions
         .map(c => `
           <a
             href="#"
@@ -809,6 +842,9 @@ export async function resultsView(params, query) {
         `)
         .join('');
 
+    nav.innerHTML =
+      allPillHtml + competitionPillsHtml;
+
     nav
       .querySelectorAll('.comp-nav-item')
       .forEach(item => {
@@ -825,13 +861,14 @@ export async function resultsView(params, query) {
             history.replaceState(
               null,
               '',
-              `${dashPath('/results')}?competition=${selectedCompetitionId}`
+              selectedCompetitionId
+                ? `${dashPath('/results')}?competition=${selectedCompetitionId}`
+                : dashPath('/results')
             );
 
             renderCompetitionNav();
-
+            renderMatchesList();
             loadStandings();
-            loadCompetitionMatches();
           }
         );
       });
@@ -852,6 +889,20 @@ export async function resultsView(params, query) {
       document.getElementById(
         'standings-container'
       );
+
+    if (!selectedCompetitionId) {
+
+      statusEl.textContent = '';
+      statusEl.classList.remove('error');
+
+      container.innerHTML = `
+        <div class="empty-msg">
+          Select a competition above to view its standings.
+        </div>
+      `;
+
+      return;
+    }
 
     statusEl.textContent = 'Loading...';
 
@@ -982,35 +1033,29 @@ export async function resultsView(params, query) {
   }
 
   // =========================================================
-  // COMPETITION MATCHES
+  // VISIBLE MATCHES (fetched once, filtered client-side)
   // =========================================================
 
-  async function loadCompetitionMatches() {
+  async function loadVisibleMatches() {
 
     const statusEl =
       document.getElementById(
         'matches-status'
       );
 
-    const container =
-      document.getElementById(
-        'matches-container'
-      );
-
     statusEl.textContent = 'Loading...';
+    statusEl.classList.remove('error');
 
     const {
       data,
       error
     } = await supabaseClient
       .from('matches')
-      .select('*')
-      .eq(
-        'competition_id',
-        selectedCompetitionId
-      );
+      .select('*');
 
     if (error) {
+
+      allVisibleMatches = [];
 
       statusEl.textContent =
         error.message;
@@ -1022,28 +1067,41 @@ export async function resultsView(params, query) {
 
     statusEl.textContent = '';
 
-    if (!data.length) {
-
-      container.innerHTML = `
-        <div class="empty-msg">
-          No matches in this competition yet.
-        </div>
-      `;
-
-      return;
-    }
-
-    const visibleMatches =
-      data.filter(m =>
+    allVisibleMatches =
+      (data || []).filter(m =>
         isVisibleToManager(m)
       );
+  }
 
-    if (!visibleMatches.length) {
+  // =========================================================
+  // MATCHES LIST (render only — no fetch)
+  // =========================================================
+
+  function renderMatchesList() {
+
+    const container =
+      document.getElementById(
+        'matches-container'
+      );
+
+    const matchesToShow =
+      selectedCompetitionId
+        ? allVisibleMatches.filter(
+            m =>
+              m.competition_id ===
+              selectedCompetitionId
+          )
+        : allVisibleMatches;
+
+    if (!matchesToShow.length) {
 
       container.innerHTML = `
         <div class="empty-msg">
-          No matches assigned to you right
-          now in this competition.
+          ${
+            selectedCompetitionId
+              ? 'No matches assigned to you right now in this competition.'
+              : 'No matches assigned to you right now.'
+          }
         </div>
       `;
 
@@ -1051,7 +1109,7 @@ export async function resultsView(params, query) {
     }
 
     const sorted =
-      [...visibleMatches].sort(
+      [...matchesToShow].sort(
         (a, b) =>
           scheduledDateTime(b) -
           scheduledDateTime(a)
@@ -1190,7 +1248,7 @@ export async function resultsView(params, query) {
             <a
               class="btn-primary"
               style="text-decoration:none;"
-              href="${dashPath('/results')}?match=${m.id}&competition=${selectedCompetitionId}"
+              href="${dashPath('/results')}?match=${m.id}&competition=${m.competition_id}"
             >
               Record Result
             </a>
@@ -1223,6 +1281,9 @@ export async function resultsView(params, query) {
           </div>
 
           <div class="match-meta">
+            <span class="match-competition-tag">
+              ${escapeHtml(competitionName(m.competition_id))}
+            </span>
             ${m.match_date || 'No date'}
             ${m.match_time || ''}
             ·
