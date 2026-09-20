@@ -24,7 +24,12 @@ export async function matchReportDetailsView(params) {
 
   try {
     const { data: post, error } = await supabase
-      
+      .from('match_report_posts')
+      .select('id, slug, title, body, created_at, cover_overlay_id, match:matches(slug)')
+      .eq('slug', slug)
+      .eq('is_active', true)
+      .maybeSingle();
+
     if (error) throw error;
 
     if (!post) {
