@@ -3,13 +3,18 @@
 // Shared media pipeline. Three input paths, one processing pipeline:
 //  - "Choose Existing": returns a real, already-uploaded media_library row immediately.
 //    Untouched — never goes through crop/resize/watermark/compression/Blob conversion.
-//  - "Choose From Device" and "Take Photo" (in-PWA camera): both funnel through the
-//    same ratio-aware crop → watermark → tag steps, entirely in-browser, then return
+//  - "Choose From Device" and "Take Photo": both funnel through the same
+//    ratio-aware crop → watermark → tag steps, entirely in-browser, then return
 //    a PENDING object — nothing touches Supabase yet. The host page must call
 //    MediaPipeline.finalizeUpload(pending, postTitle) at actual publish time to
 //    perform the real upload + media_library insert. This guarantees nothing is
 //    saved to Supabase if the post is never published, and that a camera photo
 //    the user never publishes never leaves the browser.
+//
+//  "Take Photo" opens the device's native camera app (via a file input with
+//  capture="environment") rather than an in-page getUserMedia camera. The
+//  captured photo is then handed to the same ratio-select/crop/tag steps
+//  used for device uploads.
 
 (function () {
   // Centralized aspect-ratio / output-dimension presets. Do not scatter
@@ -24,7 +29,7 @@
 
   // Preserves the previous hard-coded 16:9 default for the device-upload path.
   const DEFAULT_DEVICE_PRESET = "wide";
-  // Sensible default when opening the in-PWA camera.
+  // Sensible default when using Take Photo.
   const DEFAULT_CAMERA_PRESET = "square";
 
   const OUTPUT_QUALITY = 0.9; // JPEG compression quality used for the final Blob
@@ -33,9 +38,6 @@
   let allPlayers = [];
   let allOfficials = [];
   let clubCrestUrl = null;
-
-  // ---- Camera state ----
-  let currentStream = null;
 
   function injectStyles() {
     if (document.getElementById("media-pipeline-styles")) return;
@@ -68,18 +70,10 @@
       .mp-file-input-wrap { border: 2px dashed #d3ded6; border-radius: 8px; padding: 2rem; text-align: center; color: #888; font-size: 0.88rem; cursor: pointer; }
       .mp-file-input-wrap:hover { border-color: #109b45; color: #109b45; }
 
-      /* Camera */
-      .mp-camera { display: flex; flex-direction: column; align-items: center; }
+      /* Shared ratio-picker chips (used by both device upload and Take Photo) */
       .mp-camera-ratio { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: center; margin-bottom: 0.8rem; }
       .mp-camera-ratio-btn { border: 1px solid #d3ded6; background: #fff; color: #555; border-radius: 16px; padding: 0.35rem 0.8rem; font-size: 0.78rem; cursor: pointer; }
       .mp-camera-ratio-btn.selected { background: #109b45; color: #fff; border-color: #109b45; }
-      .mp-camera-frame { width: 100%; max-width: 320px; background: #000; border-radius: 10px; overflow: hidden; position: relative; margin: 0 auto; }
-      .mp-camera-video { width: 100%; height: 100%; object-fit: cover; display: block; }
-      .mp-camera-controls { display: flex; align-items: center; justify-content: center; gap: 1.4rem; margin-top: 1rem; }
-      .mp-camera-shutter { width: 60px; height: 60px; border-radius: 50%; background: #fff; border: 4px solid #109b45; cursor: pointer; padding: 0; }
-      .mp-camera-shutter:active { background: #e5f4ea; }
-      .mp-camera-switch { width: 44px; height: 44px; border-radius: 50%; border: 1px solid #d3ded6; background: #fff; font-size: 1.1rem; cursor: pointer; }
-      .mp-camera-preview { background: #222; }
     `;
     document.head.appendChild(style);
   }
@@ -139,8 +133,6 @@
   }
 
   function renderChoiceStep(resolve) {
-    stopCamera(); // defensive: ensure no stream is left running if we land back here
-
     modalEl.innerHTML = `
       <div class="mp-box" style="text-align:center;">
         <h2>Add Image</h2>
@@ -160,7 +152,7 @@
 
     modalEl.querySelector("#mp-choice-camera-btn").addEventListener("click", async () => {
       await ensureSupportingData();
-      renderCameraStep(resolve, DEFAULT_CAMERA_PRESET);
+      openNativeCamera(resolve);
     });
 
     modalEl.querySelector("#mp-choice-upload-btn").addEventListener("click", async () => {
@@ -175,15 +167,82 @@
   }
 
   function closeModal(resolve, result) {
-    stopCamera();
     if (modalEl) modalEl.remove();
     modalEl = null;
     resolve(result || null);
   }
 
   // ===================================================================
-  // CHOOSE FROM DEVICE (formerly "Upload New") — untouched contract,
-  // now ratio-aware via the shared crop engine.
+  // TAKE PHOTO — opens the device's native camera app via a file input
+  // with capture="environment", instead of an in-page getUserMedia camera.
+  // ===================================================================
+
+  function openNativeCamera(resolve) {
+    // Lightweight holding state while the OS camera app takes over the screen.
+    modalEl.innerHTML = `
+      <div class="mp-box" style="text-align:center;">
+        <h2>Take Photo</h2>
+        <p style="font-size:0.88rem; color:#666;">Opening your camera…</p>
+        <div class="mp-actions" style="justify-content:center;">
+          <button class="mp-btn-secondary" id="mp-camera-native-cancel-btn">Cancel</button>
+        </div>
+      </div>
+    `;
+
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.capture = "environment"; // hints mobile browsers to open the camera app directly
+    input.style.display = "none";
+    document.body.appendChild(input);
+
+    let settled = false;
+
+    function cleanup() {
+      window.removeEventListener("focus", onFocusReturn);
+      if (input.parentNode) input.remove();
+    }
+
+    // Most mobile browsers never fire a 'cancel' event on <input type="file">, so if the
+    // user backs out of the camera app without taking a photo, detect that by checking
+    // whether a file was actually chosen shortly after the window regains focus.
+    function onFocusReturn() {
+      setTimeout(() => {
+        if (!settled && (!input.files || !input.files[0])) {
+          settled = true;
+          cleanup();
+          renderChoiceStep(resolve);
+        }
+      }, 300);
+    }
+    window.addEventListener("focus", onFocusReturn);
+
+    input.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      settled = true;
+      cleanup();
+      if (!file) {
+        renderChoiceStep(resolve);
+        return;
+      }
+      const img = new Image();
+      img.onload = () => renderRatioSelectStep(resolve, img, file, "camera");
+      img.src = URL.createObjectURL(file);
+    });
+
+    modalEl.querySelector("#mp-camera-native-cancel-btn").addEventListener("click", () => {
+      settled = true;
+      cleanup();
+      renderChoiceStep(resolve);
+    });
+
+    input.click();
+  }
+
+  // ===================================================================
+  // CHOOSE FROM DEVICE — untouched contract, ratio-aware via the shared
+  // crop engine. Also used by Take Photo after the native camera returns
+  // a photo (source="camera").
   // ===================================================================
 
   function renderFileSelectStep(resolve) {
@@ -206,17 +265,18 @@
       const file = e.target.files[0];
       if (!file) return;
       const img = new Image();
-      img.onload = () => renderRatioSelectStep(resolve, img, file);
+      img.onload = () => renderRatioSelectStep(resolve, img, file, "device");
       img.src = URL.createObjectURL(file);
     });
   }
 
-  function renderRatioSelectStep(resolve, img, originalFile) {
-    let selectedKey = DEFAULT_DEVICE_PRESET;
+  function renderRatioSelectStep(resolve, img, originalFile, source) {
+    source = source || "device";
+    let selectedKey = source === "camera" ? DEFAULT_CAMERA_PRESET : DEFAULT_DEVICE_PRESET;
 
     modalEl.innerHTML = `
       <div class="mp-box">
-        <h2>Upload Media</h2>
+        <h2>${source === "camera" ? "Take Photo" : "Upload Media"}</h2>
         <div class="mp-step-label">Choose aspect ratio</div>
         <div class="mp-camera-ratio" id="mp-device-ratio">
           ${Object.keys(MEDIA_PRESETS).map(key => `
@@ -237,192 +297,15 @@
       });
     });
 
-    modalEl.querySelector("#mp-back-btn").addEventListener("click", () => renderFileSelectStep(resolve));
-    modalEl.querySelector("#mp-ratio-continue-btn").addEventListener("click", () => {
-      renderCropStep(resolve, img, originalFile, selectedKey, "device");
-    });
-  }
-
-  // ===================================================================
-  // TAKE PHOTO — in-PWA camera (no external camera app)
-  // ===================================================================
-
-  async function startCamera(facingMode) {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error("unsupported");
-    }
-    stopCamera();
-    try {
-      currentStream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: { facingMode: { ideal: facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } }
-      });
-    } catch (err) {
-      if (err && (err.name === "OverconstrainedError" || err.name === "ConstraintNotSatisfiedError")) {
-        // Fall back to whatever camera is available if the requested facing mode fails.
-        currentStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+    modalEl.querySelector("#mp-back-btn").addEventListener("click", () => {
+      if (source === "camera") {
+        openNativeCamera(resolve);
       } else {
-        throw err;
+        renderFileSelectStep(resolve);
       }
-    }
-    return currentStream;
-  }
-
-  function stopCamera() {
-    if (currentStream) {
-      currentStream.getTracks().forEach(track => track.stop());
-      currentStream = null;
-    }
-  }
-
-  function capturePhotoFrame(video) {
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth || 1280;
-    canvas.height = video.videoHeight || 720;
-    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-    return canvas;
-  }
-
-  function canvasToImage(canvas) {
-    return new Promise((resolve) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.src = canvas.toDataURL("image/jpeg", 0.95);
     });
-  }
-
-  function getCameraErrorMessage(err) {
-    const name = err && err.name;
-    if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-      return "Camera access was denied. Allow camera access in your browser settings to use Take Photo.";
-    }
-    if (name === "NotFoundError" || name === "DevicesNotFoundError") {
-      return "No camera was found on this device.";
-    }
-    if (name === "NotReadableError" || name === "TrackStartError") {
-      return "The camera is unavailable right now. It may be in use by another app.";
-    }
-    if (err && err.message === "unsupported") {
-      return "Camera capture isn't supported in this browser.";
-    }
-    return "Could not start the camera. Please try again.";
-  }
-
-  async function renderCameraStep(resolve, presetKey) {
-    presetKey = presetKey || DEFAULT_CAMERA_PRESET;
-    let currentFacing = "environment"; // prefer rear camera
-
-    modalEl.innerHTML = `
-      <div class="mp-box" style="max-width:420px;">
-        <h2>Take Photo</h2>
-        <div class="mp-camera">
-          <div class="mp-camera-ratio" id="mp-camera-ratio">
-            ${Object.keys(MEDIA_PRESETS).map(key => `
-              <button type="button" class="mp-camera-ratio-btn ${key === presetKey ? 'selected' : ''}" data-key="${key}">${MEDIA_PRESETS[key].label}</button>
-            `).join("")}
-          </div>
-          <div class="mp-camera-frame" id="mp-camera-frame">
-            <video class="mp-camera-video" id="mp-camera-video" autoplay playsinline muted></video>
-          </div>
-          <div class="mp-status" id="mp-camera-status"></div>
-          <div class="mp-camera-controls">
-            <button type="button" class="mp-camera-switch" id="mp-camera-switch-btn" title="Switch camera">🔄</button>
-            <button type="button" class="mp-camera-shutter" id="mp-camera-shutter-btn" aria-label="Take photo"></button>
-            <span style="width:44px;"></span>
-          </div>
-        </div>
-        <div class="mp-actions" style="justify-content:center;">
-          <button class="mp-btn-secondary" id="mp-camera-cancel-btn">Cancel</button>
-        </div>
-      </div>
-    `;
-
-    const frameEl = modalEl.querySelector("#mp-camera-frame");
-    const videoEl = modalEl.querySelector("#mp-camera-video");
-    const statusEl = modalEl.querySelector("#mp-camera-status");
-
-    function setFrameRatio(key) {
-      const p = MEDIA_PRESETS[key];
-      frameEl.style.aspectRatio = `${p.width} / ${p.height}`;
-    }
-    setFrameRatio(presetKey);
-
-    modalEl.querySelectorAll(".mp-camera-ratio-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        presetKey = btn.dataset.key;
-        modalEl.querySelectorAll(".mp-camera-ratio-btn").forEach(b => b.classList.toggle("selected", b === btn));
-        setFrameRatio(presetKey);
-      });
-    });
-
-    modalEl.querySelector("#mp-camera-cancel-btn").addEventListener("click", () => {
-      stopCamera();
-      closeModal(resolve);
-    });
-
-    modalEl.querySelector("#mp-camera-switch-btn").addEventListener("click", async () => {
-      currentFacing = currentFacing === "environment" ? "user" : "environment";
-      await startCameraSafe();
-    });
-
-    modalEl.querySelector("#mp-camera-shutter-btn").addEventListener("click", async () => {
-      if (!currentStream) return;
-      const canvas = capturePhotoFrame(videoEl);
-      stopCamera(); // stop the stream the moment we have the frame
-      const img = await canvasToImage(canvas);
-      renderCapturePreviewStep(resolve, img, presetKey);
-    });
-
-    async function startCameraSafe() {
-      statusEl.style.color = "#109b45";
-      statusEl.textContent = "Starting camera…";
-      try {
-        await startCamera(currentFacing);
-        videoEl.srcObject = currentStream;
-        videoEl.play().catch(() => {});
-        statusEl.textContent = "";
-      } catch (err) {
-        statusEl.textContent = "";
-        renderCameraErrorStep(resolve, err);
-      }
-    }
-
-    await startCameraSafe();
-  }
-
-  function renderCameraErrorStep(resolve, err) {
-    stopCamera();
-    const message = getCameraErrorMessage(err);
-    modalEl.innerHTML = `
-      <div class="mp-box" style="text-align:center;">
-        <h2>Take Photo</h2>
-        <p style="font-size:0.88rem; color:#b3261e; margin-bottom:1.2rem;">${escapeHtml(message)}</p>
-        <div class="mp-actions" style="justify-content:center;">
-          <button class="mp-btn-secondary" id="mp-camera-err-back-btn">Back</button>
-        </div>
-      </div>
-    `;
-    modalEl.querySelector("#mp-camera-err-back-btn").addEventListener("click", () => renderChoiceStep(resolve));
-  }
-
-  function renderCapturePreviewStep(resolve, img, presetKey) {
-    const preset = MEDIA_PRESETS[presetKey];
-    modalEl.innerHTML = `
-      <div class="mp-box" style="max-width:420px; text-align:center;">
-        <h2>Take Photo</h2>
-        <div class="mp-step-label">Preview</div>
-        <div class="mp-camera-preview" style="max-width:280px; margin:0 auto 1rem; aspect-ratio:${preset.width}/${preset.height}; overflow:hidden; border-radius:8px;">
-          <img src="${img.src}" style="width:100%; height:100%; object-fit:cover; display:block;">
-        </div>
-        <div class="mp-actions" style="justify-content:center;">
-          <button class="mp-btn-secondary" id="mp-retake-btn">Retake</button>
-          <button class="mp-btn-primary" id="mp-use-photo-btn">Use Photo</button>
-        </div>
-      </div>
-    `;
-    modalEl.querySelector("#mp-retake-btn").addEventListener("click", () => renderCameraStep(resolve, presetKey));
-    modalEl.querySelector("#mp-use-photo-btn").addEventListener("click", () => {
-      renderCropStep(resolve, img, null, presetKey, "camera");
+    modalEl.querySelector("#mp-ratio-continue-btn").addEventListener("click", () => {
+      renderCropStep(resolve, img, originalFile, selectedKey, source);
     });
   }
 
@@ -506,11 +389,7 @@
     });
 
     modalEl.querySelector("#mp-back-btn").addEventListener("click", () => {
-      if (source === "camera") {
-        renderCameraStep(resolve, presetKey);
-      } else {
-        renderRatioSelectStep(resolve, img, originalFile);
-      }
+      renderRatioSelectStep(resolve, img, originalFile, source);
     });
 
     modalEl.querySelector("#mp-confirm-crop-btn").addEventListener("click", () => {
