@@ -30,7 +30,6 @@
   path = "/competitions/*"
   function = "og-meta"
 
-// netlify.toml — add this block alongside the other [[edge_functions]] entries
 [[edge_functions]]
   path = "/officials/*"
   function = "og-meta"
