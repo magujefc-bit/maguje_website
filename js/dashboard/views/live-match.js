@@ -1,3 +1,4 @@
+// src/views/live-match-view.js
 import { router } from '../../router.js';
 import { dashPath } from '../config.js';
 import { viewContainer } from '../view-container.js';
@@ -58,6 +59,22 @@ injectStyle('live-match-view', `
     flex-shrink: 0;
   }
 
+  .event-delete-btn {
+    background: none;
+    border: 1px solid #d33;
+    color: #d33;
+    border-radius: 6px;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .event-delete-btn:hover {
+    background: #d33;
+    color: #fff;
+  }
+
   .squad-check-row {
     display: flex;
     align-items: center;
@@ -100,19 +117,27 @@ export async function liveMatchView(params, query) {
 
     <div id="scoreboard-slot" style="margin-bottom:1.2rem;"></div>
 
+    <!-- GO LIVE (before setup) -->
+    <div class="card hidden" id="go-live-card">
+      <h2>Go Live</h2>
+      <p class="empty-msg">
+        Make this match live now. The scoreboard becomes visible before you set up
+        the half length and starting XI or start the game.
+      </p>
+      <button id="go-live-btn" class="btn-primary">
+        📡 Go Live
+      </button>
+      <span id="go-live-status" class="save-status"></span>
+    </div>
+
     <!-- PRE-START -->
-    <div class="card" id="pre-start-card">
+    <div class="card hidden" id="pre-start-card">
       <h2>Set Up & Start the Match</h2>
 
       <div class="field-grid">
         <div>
-          <label>First Half Length (minutes)</label>
-          <input type="number" id="half1-length-input" value="45" min="1">
-        </div>
-
-        <div>
-          <label>Second Half Length (minutes)</label>
-          <input type="number" id="half2-length-input" value="45" min="1">
+          <label>Half Length (minutes)</label>
+          <input type="number" id="half-length-input" value="45" min="1">
         </div>
       </div>
 
@@ -575,17 +600,23 @@ export async function liveMatchView(params, query) {
         minute: x.minute,
         html: x.is_opponent_goal
           ? `⚽ Goal — ${teamName(currentMatch.opponent_team_id)}`
-          : `⚽ Goal — ${playerName(x.scorer_id)}${x.assist_id ? ` (assist: ${playerName(x.assist_id)})` : ''}`
+          : `⚽ Goal — ${playerName(x.scorer_id)}${x.assist_id ? ` (assist: ${playerName(x.assist_id)})` : ''}`,
+        type: 'goal',
+        id: x.id
       })),
 
       ...cards.map(x => ({
         minute: x.minute,
-        html: `${x.card_type === 'yellow' ? '🟨' : '🟥'} ${playerName(x.player_id)}`
+        html: `${x.card_type === 'yellow' ? '🟨' : '🟥'} ${playerName(x.player_id)}`,
+        type: 'card',
+        id: x.id
       })),
 
       ...subs.map(x => ({
         minute: x.minute,
-        html: `🔄 ${playerName(x.player_out_id)} → ${playerName(x.player_in_id)}`
+        html: `🔄 ${playerName(x.player_out_id)} → ${playerName(x.player_in_id)}`,
+        type: 'sub',
+        id: x.id
       })),
     ].sort((a, b) => (a.minute || 0) - (b.minute || 0));
 
@@ -594,12 +625,60 @@ export async function liveMatchView(params, query) {
           .map(i => `
             <div class="event-row">
               <span class="event-minute">${i.minute || 0}'</span>
-              <span>${i.html}</span>
+              <span style="flex:1;">${i.html}</span>
+              <button class="event-delete-btn" data-type="${i.type}" data-id="${i.id}">
+                Undo
+              </button>
             </div>
           `)
           .join('')
       : `<div class="empty-msg">No events yet.</div>`;
   }
+
+  document
+    .getElementById('events-list')
+    .addEventListener('click', async (e) => {
+      const btn = e.target.closest('.event-delete-btn');
+      if (!btn) return;
+
+      if (!confirm('Remove this event?')) return;
+
+      const type = btn.dataset.type;
+      const id = btn.dataset.id;
+
+      btn.disabled = true;
+
+      const table =
+        type === 'goal' ? 'match_goals' :
+        type === 'card' ? 'match_cards' :
+        'match_substitutions';
+
+      const { error } = await supabaseClient
+        .from(table)
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        alert(error.message);
+        btn.disabled = false;
+        return;
+      }
+
+      if (type === 'sub') {
+        const subRow = subs.find(s => s.id === id);
+
+        if (subRow) {
+          await supabaseClient
+            .from('match_lineups')
+            .delete()
+            .eq('match_id', matchId)
+            .eq('player_id', subRow.player_in_id)
+            .eq('is_starter', false);
+        }
+      }
+
+      await loadMatchData();
+    });
 
   function renderStarterChecklist() {
     const container = document.getElementById('starter-select-list');
@@ -639,25 +718,33 @@ export async function liveMatchView(params, query) {
   }
 
   document
+    .getElementById('go-live-btn')
+    .addEventListener('click', async () => {
+      const statusEl = document.getElementById('go-live-status');
+
+      statusEl.textContent = 'Going live...';
+      statusEl.classList.remove('error');
+
+      await updateMatch({
+        is_live: true
+      });
+    });
+
+  document
     .getElementById('start-game-btn')
     .addEventListener('click', async () => {
       const statusEl = document.getElementById('start-status');
 
-      const half1 = parseInt(
-        document.getElementById('half1-length-input').value
-      );
-
-      const half2 = parseInt(
-        document.getElementById('half2-length-input').value
+      const halfLength = parseInt(
+        document.getElementById('half-length-input').value
       );
 
       const starterIds = [
         ...document.querySelectorAll('.starter-checkbox:checked')
       ].map(cb => cb.value);
 
-      if (!half1 || half1 < 1 || !half2 || half2 < 1) {
-        statusEl.textContent =
-          'Enter valid lengths for both halves.';
+      if (!halfLength || halfLength < 1) {
+        statusEl.textContent = 'Enter a valid half length.';
         statusEl.classList.add('error');
         return;
       }
@@ -695,8 +782,7 @@ export async function liveMatchView(params, query) {
         await updateMatch({
           is_live: true,
           live_state: 'first_half',
-          half_length_minutes: half1,
-          second_half_length_minutes: half2,
+          half_length_minutes: halfLength,
           first_half_started_at: new Date().toISOString(),
         });
       } catch (err) {
@@ -706,9 +792,19 @@ export async function liveMatchView(params, query) {
     });
 
   function renderControls() {
+    const goLiveCard = document.getElementById('go-live-card');
     const preStart = document.getElementById('pre-start-card');
     const liveCard = document.getElementById('live-controls-card');
     const phaseRow = document.getElementById('phase-btn-row');
+
+    if (!currentMatch.is_live) {
+      goLiveCard.classList.remove('hidden');
+      preStart.classList.add('hidden');
+      liveCard.classList.add('hidden');
+      return;
+    }
+
+    goLiveCard.classList.add('hidden');
 
     if (currentMatch.live_state === 'not_started') {
       preStart.classList.remove('hidden');
