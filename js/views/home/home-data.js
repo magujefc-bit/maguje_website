@@ -1,3 +1,4 @@
+// src/views/home/home-data.js
 import { supabase } from "../../supabase-client.js";
 import { combineDateTime, toExternalMatch } from "../../utils/format.js";
 
@@ -79,7 +80,15 @@ export async function fetchFixturesData() {
     ] = await Promise.all([
       supabase
         .from("matches")
-        .select(`id, slug, match_date, match_time, our_score, opponent_score, opponent_team_id, is_home, competition_id`)
+        // Added live_state + phase start timestamps + half lengths —
+        // needed by fixtures-section.js to compute the live minute /
+        // stoppage-time label (mirrors scoreboard-core.js's clock
+        // math). Everything else about this query is unchanged.
+        .select(
+          `id, slug, match_date, match_time, our_score, opponent_score, opponent_team_id, is_home, competition_id,
+           live_state, first_half_started_at, second_half_started_at, extra_time_started_at,
+           half_length_minutes, second_half_length_minutes`,
+        )
         .eq("is_live", true)
         .eq("is_internal", true)
         .limit(1),

@@ -1,3 +1,4 @@
+// src/components/match-card.js
 import { injectStyle } from '../utils/inject-style.js';
 import { lazyImage } from './lazy-image.js';
 
@@ -24,6 +25,11 @@ injectStyle('match-card', `
  * which should link to /fixtures rather than the match detail
  * page. Defaults to the previous behaviour (/matches/:slug) when
  * omitted, so every other existing call site is unaffected.
+ *
+ * match.liveClockLabel — optional. When set on a live-status match
+ * (e.g. "23'" or "20+1'"), replaces the static "Live" text in the
+ * badge. Omitted/falsy for every existing caller, so they keep
+ * showing plain "Live" exactly as before.
  */
 export function matchCard(match, options = {}) {
   const status = match.status || 'scheduled';
@@ -33,7 +39,7 @@ export function matchCard(match, options = {}) {
     ? `<div class="match-card__score">${match.homeScore} – ${match.awayScore}</div>`
     : `<div class="match-card__vs">VS</div>`;
   const bottomLine = isLive
-    ? `<span class="match-card__live-badge"><span class="match-card__live-dot"></span>Live</span>`
+    ? `<span class="match-card__live-badge"><span class="match-card__live-dot"></span>${match.liveClockLabel || 'Live'}</span>`
     : `<span class="match-card__meta">${formatKickoff(match.kickoffAt)}</span>`;
   const competitionLine = match.competition?.name
     ? `<div class="match-card__competition">${match.competition.name}</div>`

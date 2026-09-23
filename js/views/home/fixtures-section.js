@@ -72,15 +72,23 @@ injectStyle(
  *   2+ → carousel with nav buttons, included in auto-scroll.
  * - Each upcoming card gets its own countdown pill, but only if
  *   that match's kickoff hasn't passed yet.
- * - The live card's score is NOT read from matches.our_score /
- *   matches.opponent_score — those columns aren't kept in sync
- *   with actual goals recorded. Like fab-scoreboard.js, the score
- *   is derived by counting match_goals rows for this match. We
- *   fetch that count once on mount, then subscribe to Supabase
- *   Realtime on match_goals (filtered by match_id) and recount on
- *   any insert/update/delete. See initLiveScore() /
- *   subscribeLiveScore(). Detecting the match ending (is_live
- *   flipping false) is handled by home.js on next load, not here.
+ * - The live card shows both a score and a live minute/stoppage
+ *   clock (e.g. "23'" or "20+1'"), neither of which come from
+ *   matches.our_score/opponent_score directly:
+ *     - Score is derived by counting match_goals rows, same as
+ *       fab-scoreboard.js — matches.our_score/opponent_score are
+ *       not kept in sync with actual goals.
+ *     - Clock is computed locally from live_state + phase start
+ *       timestamps + half lengths, mirroring (and fixing the
+ *       stoppage-time cap on) scoreboard-core.js's currentMinute.
+ *       Duplicated here rather than imported because
+ *       scoreboard-core.js is a global <script>, not an ES module,
+ *       and isn't loaded on the home page bundle.
+ *   subscribeLiveCard() wires both: an initial fetch, a realtime
+ *   subscription on match_goals for score changes, and a 15s
+ *   interval that just re-renders the clock label without hitting
+ *   the DB. Detecting the match ending (is_live flipping false) is
+ *   handled by home.js on next load, not here.
  *
  * Returns { cleanup, advance } — advance is only present when
  * there are 2+ upcoming matches (a real carousel to advance).
@@ -114,11 +122,7 @@ export function renderFixturesSection(root, { liveMatch, upcomingMatches }) {
 
   const pillCleanups = upcoming.map((match, i) => startKickoffToast(section, match, i));
 
-  let liveScoreCleanup;
-  if (liveMatch) {
-    initLiveScore(section, liveMatch);
-    liveScoreCleanup = subscribeLiveScore(section, liveMatch);
-  }
+  const liveCardCleanup = liveMatch ? subscribeLiveCard(section, liveMatch) : undefined;
 
   let carouselInstance = null;
   if (upcoming.length > 1) {
@@ -131,7 +135,7 @@ export function renderFixturesSection(root, { liveMatch, upcomingMatches }) {
   return {
     cleanup() {
       pillCleanups.forEach((fn) => fn && fn());
-      if (liveScoreCleanup) liveScoreCleanup();
+      if (liveCardCleanup) liveCardCleanup();
       if (carouselInstance) carouselInstance.destroy();
     },
     advance: carouselInstance ? carouselInstance.advance : undefined,
@@ -220,9 +224,8 @@ function formatKickoffToastTime(diffMs) {
 /*
  * Counts match_goals rows for this match and returns { our, opponent }
  * counts — NOT home/away yet, since that depends on is_home and is
- * resolved by the caller. Mirrors ScoreboardCore.computeScore's
- * source data (match_goals, filtered by is_opponent_goal), but we
- * only need counts here, not the full goal list.
+ * resolved by toExternalMatch. Mirrors ScoreboardCore.computeScore's
+ * source data (match_goals, filtered by is_opponent_goal).
  */
 async function fetchGoalCounts(matchId) {
   const { data, error } = await supabase
@@ -240,31 +243,49 @@ async function fetchGoalCounts(matchId) {
   return { our, opponent };
 }
 
-async function initLiveScore(section, liveMatchRow) {
-  if (!liveMatchRow?.id) return;
-  const counts = await fetchGoalCounts(liveMatchRow.id);
-  if (counts) renderLiveScore(section, liveMatchRow, counts);
+/*
+ * Mirrors scoreboard-core.js's minuteWithStoppage() — same caps,
+ * same "base+stoppage'" notation once a phase runs past its
+ * configured length (e.g. a 20-minute half shows "20+1'" on minute
+ * 21, not "21'"). Duplicated locally since scoreboard-core.js is a
+ * global script, not importable here. Keep in sync if that file's
+ * clock math changes.
+ */
+function formatStoppageMinute(elapsedInPhase, phaseLength, baseMinutes) {
+  if (elapsedInPhase <= phaseLength) return `${baseMinutes + elapsedInPhase}'`;
+  return `${baseMinutes + phaseLength}+${elapsedInPhase - phaseLength}'`;
 }
 
-function subscribeLiveScore(section, liveMatchRow) {
-  if (!liveMatchRow?.id) return undefined;
+function computeLiveClockLabel(match) {
+  if (!match) return "";
+  if (match.live_state === "half_time") return "HT";
+  if (match.live_state === "full_time") return "FT";
+  if (match.live_state === "not_started") return "";
 
-  const channel = supabase
-    .channel(`home-fixtures-live-${liveMatchRow.id}`)
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "match_goals", filter: `match_id=eq.${liveMatchRow.id}` },
-      async () => {
-        const counts = await fetchGoalCounts(liveMatchRow.id);
-        if (counts) renderLiveScore(section, liveMatchRow, counts);
-      },
-    )
-    .subscribe();
+  const halfLen = match.half_length_minutes || 45;
+  const secondLen = match.second_half_length_minutes || halfLen;
 
-  return () => supabase.removeChannel(channel);
+  if (match.live_state === "first_half" && match.first_half_started_at) {
+    const elapsed = Math.floor((Date.now() - new Date(match.first_half_started_at).getTime()) / 60000) + 1;
+    return formatStoppageMinute(elapsed, halfLen, 0);
+  }
+  if (match.live_state === "second_half" && match.second_half_started_at) {
+    const elapsed = Math.floor((Date.now() - new Date(match.second_half_started_at).getTime()) / 60000) + 1;
+    return formatStoppageMinute(elapsed, secondLen, halfLen);
+  }
+  if (match.live_state === "extra_time" && match.extra_time_started_at) {
+    const base = halfLen + secondLen;
+    const elapsed = Math.floor((Date.now() - new Date(match.extra_time_started_at).getTime()) / 60000) + 1;
+    const extraLen = match.extra_time_length_minutes || null;
+    if (extraLen) return formatStoppageMinute(elapsed, extraLen, base);
+    // No configured extra-time length on this row — uncapped, same
+    // as scoreboard-core.js's fallback.
+    return `${base + elapsed}'`;
+  }
+  return "";
 }
 
-function renderLiveScore(section, liveMatchRow, counts) {
+function renderLiveCard(section, liveMatchRow, counts) {
   const wrap = section.querySelector(".home-fixture-card-wrap--live");
   if (!wrap) return;
 
@@ -272,6 +293,7 @@ function renderLiveScore(section, liveMatchRow, counts) {
     ...liveMatchRow,
     our_score: counts.our,
     opponent_score: counts.opponent,
+    liveClockLabel: computeLiveClockLabel(liveMatchRow) || "Live",
   };
 
   wrap.innerHTML = `
@@ -279,4 +301,48 @@ function renderLiveScore(section, liveMatchRow, counts) {
     ${matchCard(toExternalMatch({ ...merged, status: "live" }))}
   `;
   observeLazyImages(wrap);
+}
+
+/*
+ * Sets up the live card's score (via match_goals realtime) and
+ * clock (via a local 15s tick — no DB call, just recomputed from
+ * timestamps already on liveMatchRow). Returns a sync cleanup fn
+ * immediately; the initial score fetch happens fire-and-forget so
+ * cleanup registration in renderFixturesSection isn't blocked on it.
+ */
+function subscribeLiveCard(section, liveMatchRow) {
+  if (!liveMatchRow?.id) return undefined;
+
+  let latestCounts = null;
+
+  async function refreshCounts() {
+    const counts = await fetchGoalCounts(liveMatchRow.id);
+    if (counts) {
+      latestCounts = counts;
+      renderLiveCard(section, liveMatchRow, latestCounts);
+    }
+  }
+
+  refreshCounts();
+
+  const channel = supabase
+    .channel(`home-fixtures-live-${liveMatchRow.id}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "match_goals", filter: `match_id=eq.${liveMatchRow.id}` },
+      refreshCounts,
+    )
+    .subscribe();
+
+  // Re-renders using the last known score so the clock label stays
+  // current even between goals. 15s keeps it fresh without
+  // rebuilding the card every second.
+  const clockIntervalId = setInterval(() => {
+    if (latestCounts) renderLiveCard(section, liveMatchRow, latestCounts);
+  }, 15000);
+
+  return () => {
+    supabase.removeChannel(channel);
+    clearInterval(clockIntervalId);
+  };
 }

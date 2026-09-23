@@ -1,3 +1,4 @@
+// src/utils/format.js
 /**
  * Shared display-formatting helpers.
  * Pure functions only — no Supabase calls, no DOM access.
@@ -32,6 +33,11 @@ export function toExternalMatch(row) {
     kickoffAt: combineDateTime(row.match_date, row.match_time),
     homeScore: isAway ? row.opponent_score : row.our_score,
     awayScore: isAway ? row.our_score : row.opponent_score,
+    // Optional — only set by callers that compute a live minute/
+    // stoppage-time label (currently just the home fixtures card).
+    // Everything else leaves this undefined and matchCard() falls
+    // back to its default "Live" text, so no other caller changes.
+    liveClockLabel: row.liveClockLabel || null,
     homeTeam: isAway
       ? { name: row.opponent?.name || "TBD", shortName: row.opponent?.name, crestUrl: row.opponent?.logo_url }
       : { name: "Maguje FC", shortName: "Maguje", crestUrl: "/assets/maguje-crest.png" },
