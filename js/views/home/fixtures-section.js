@@ -1,3 +1,4 @@
+// src/views/home/fixtures-section.js
 import { matchCard } from "../../components/match-card.js";
 import { liveIndicator } from "../../components/controls.js";
 import { observeLazyImages } from "../../components/lazy-image.js";
@@ -5,6 +6,7 @@ import { initCarousel } from "../../components/carousel.js";
 import { injectStyle } from "../../utils/inject-style.js";
 import { combineDateTime, escapeHtml, toExternalMatch } from "../../utils/format.js";
 import { carouselNavButtons, wireCarouselNav } from "./home-shared.js";
+import { supabase } from "../../supabase-client.js";
 
 injectStyle(
   "fixtures-section",
@@ -70,6 +72,15 @@ injectStyle(
  *   2+ → carousel with nav buttons, included in auto-scroll.
  * - Each upcoming card gets its own countdown pill, but only if
  *   that match's kickoff hasn't passed yet.
+ * - The live card's score is NOT read from matches.our_score /
+ *   matches.opponent_score — those columns aren't kept in sync
+ *   with actual goals recorded. Like fab-scoreboard.js, the score
+ *   is derived by counting match_goals rows for this match. We
+ *   fetch that count once on mount, then subscribe to Supabase
+ *   Realtime on match_goals (filtered by match_id) and recount on
+ *   any insert/update/delete. See initLiveScore() /
+ *   subscribeLiveScore(). Detecting the match ending (is_live
+ *   flipping false) is handled by home.js on next load, not here.
  *
  * Returns { cleanup, advance } — advance is only present when
  * there are 2+ upcoming matches (a real carousel to advance).
@@ -103,6 +114,12 @@ export function renderFixturesSection(root, { liveMatch, upcomingMatches }) {
 
   const pillCleanups = upcoming.map((match, i) => startKickoffToast(section, match, i));
 
+  let liveScoreCleanup;
+  if (liveMatch) {
+    initLiveScore(section, liveMatch);
+    liveScoreCleanup = subscribeLiveScore(section, liveMatch);
+  }
+
   let carouselInstance = null;
   if (upcoming.length > 1) {
     const wrapEl = section.querySelector('[data-slot="fixtures-carousel-wrap"]');
@@ -114,6 +131,7 @@ export function renderFixturesSection(root, { liveMatch, upcomingMatches }) {
   return {
     cleanup() {
       pillCleanups.forEach((fn) => fn && fn());
+      if (liveScoreCleanup) liveScoreCleanup();
       if (carouselInstance) carouselInstance.destroy();
     },
     advance: carouselInstance ? carouselInstance.advance : undefined,
@@ -197,4 +215,68 @@ function formatKickoffToastTime(diffMs) {
   if (hours) parts.push(`${hours}h`);
   parts.push(`${minutes}m`);
   return parts.join(" ");
+}
+
+/*
+ * Counts match_goals rows for this match and returns { our, opponent }
+ * counts — NOT home/away yet, since that depends on is_home and is
+ * resolved by the caller. Mirrors ScoreboardCore.computeScore's
+ * source data (match_goals, filtered by is_opponent_goal), but we
+ * only need counts here, not the full goal list.
+ */
+async function fetchGoalCounts(matchId) {
+  const { data, error } = await supabase
+    .from("match_goals")
+    .select("is_opponent_goal")
+    .eq("match_id", matchId);
+
+  if (error) {
+    console.error("[fixtures-section] match_goals fetch failed:", error);
+    return null;
+  }
+
+  const opponent = data.filter((g) => g.is_opponent_goal).length;
+  const our = data.length - opponent;
+  return { our, opponent };
+}
+
+async function initLiveScore(section, liveMatchRow) {
+  if (!liveMatchRow?.id) return;
+  const counts = await fetchGoalCounts(liveMatchRow.id);
+  if (counts) renderLiveScore(section, liveMatchRow, counts);
+}
+
+function subscribeLiveScore(section, liveMatchRow) {
+  if (!liveMatchRow?.id) return undefined;
+
+  const channel = supabase
+    .channel(`home-fixtures-live-${liveMatchRow.id}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "match_goals", filter: `match_id=eq.${liveMatchRow.id}` },
+      async () => {
+        const counts = await fetchGoalCounts(liveMatchRow.id);
+        if (counts) renderLiveScore(section, liveMatchRow, counts);
+      },
+    )
+    .subscribe();
+
+  return () => supabase.removeChannel(channel);
+}
+
+function renderLiveScore(section, liveMatchRow, counts) {
+  const wrap = section.querySelector(".home-fixture-card-wrap--live");
+  if (!wrap) return;
+
+  const merged = {
+    ...liveMatchRow,
+    our_score: counts.our,
+    opponent_score: counts.opponent,
+  };
+
+  wrap.innerHTML = `
+    <div class="home-fixture-card-wrap__label">${liveIndicator("Live Now")}</div>
+    ${matchCard(toExternalMatch({ ...merged, status: "live" }))}
+  `;
+  observeLazyImages(wrap);
 }

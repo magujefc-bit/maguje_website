@@ -4,6 +4,7 @@ import { header } from "./components/header.js";
 import { footer } from "./components/footer.js";
 import { initInstallBanner } from "./components/install-banner.js";
 import { officialProfileView } from "./views/official-profile.js";
+import { setRouteSEO } from "./utils/seo.js";
 
 import { withMobileGate } from "./utils/mobile-gate.js";
 
@@ -45,146 +46,346 @@ import { privacyView } from "./views/privacy.js";
 import { termsView } from "./views/terms.js";
 import { notFoundView } from "./views/not-found.js";
 import { developerView } from "./views/developer.js";
-import { developerProfileView as dashDeveloperProfileView } from "./dashboard/views/developer-profile.js";
-import { reportIssueDashboardView } from "./dashboard/views/report-issue.js";
+import {
+  developerProfileView as dashDeveloperProfileView,
+} from "./dashboard/views/developer-profile.js";
+import {
+  reportIssueDashboardView,
+} from "./dashboard/views/report-issue.js";
 
 // ---------------------------------------------------------------
-// Admin dashboard — merged into this same SPA/router, living under
-// the /maguje-dashboard prefix. See js/dashboard/README.md for the
-// full breakdown of what got ported from the old standalone build.
+// Admin dashboard
 // ---------------------------------------------------------------
 import { BASE_PATH as DASH_BASE_PATH } from "./dashboard/config.js";
 import { loginView as dashLoginView } from "./dashboard/views/auth/login.js";
-import { forgotPasswordView as dashForgotPasswordView } from "./dashboard/views/auth/forgot-password.js";
-import { resetPasswordView as dashResetPasswordView } from "./dashboard/views/auth/reset-password.js";
-import { dashboardView as dashHomeView } from "./dashboard/views/dashboard.js";
-import { managersView as dashManagersView } from "./dashboard/views/managers.js";
-import { authRecordsView as dashAuthRecordsView } from "./dashboard/views/auth-records.js";
-import { systemLogView as dashSystemLogView } from "./dashboard/views/system-log.js";
-import { playersView as dashPlayersView } from "./dashboard/views/players.js";
-import { officialsView as dashOfficialsView } from "./dashboard/views/officials.js";
-import { messagesView as dashMessagesView } from "./dashboard/views/messages.js";
-import { clubProfileView as dashClubProfileView } from "./dashboard/views/club-profile.js";
-import { clubRecordsView as dashClubRecordsView } from "./dashboard/views/club-records.js";
-import { competitionsView as dashCompetitionsView } from "./dashboard/views/competitions.js";
-import { competitionDetailView as dashCompetitionDetailView } from "./dashboard/views/competition-detail.js";
-import { matchCenterView as dashMatchCenterView } from "./dashboard/views/match-center.js";
-import { resultsView as dashResultsView } from "./dashboard/views/results.js";
-import { liveMatchView as dashLiveMatchView } from "./dashboard/views/live-match.js";
-import { contentDashboardView as dashContentDashboardView } from "./dashboard/views/content-dashboard.js";
+import {
+  forgotPasswordView as dashForgotPasswordView,
+} from "./dashboard/views/auth/forgot-password.js";
+import {
+  resetPasswordView as dashResetPasswordView,
+} from "./dashboard/views/auth/reset-password.js";
+import {
+  dashboardView as dashHomeView,
+} from "./dashboard/views/dashboard.js";
+import {
+  managersView as dashManagersView,
+} from "./dashboard/views/managers.js";
+import {
+  authRecordsView as dashAuthRecordsView,
+} from "./dashboard/views/auth-records.js";
+import {
+  systemLogView as dashSystemLogView,
+} from "./dashboard/views/system-log.js";
+import {
+  playersView as dashPlayersView,
+} from "./dashboard/views/players.js";
+import {
+  officialsView as dashOfficialsView,
+} from "./dashboard/views/officials.js";
+import {
+  messagesView as dashMessagesView,
+} from "./dashboard/views/messages.js";
+import {
+  clubProfileView as dashClubProfileView,
+} from "./dashboard/views/club-profile.js";
+import {
+  clubRecordsView as dashClubRecordsView,
+} from "./dashboard/views/club-records.js";
+import {
+  competitionsView as dashCompetitionsView,
+} from "./dashboard/views/competitions.js";
+import {
+  competitionDetailView as dashCompetitionDetailView,
+} from "./dashboard/views/competition-detail.js";
+import {
+  matchCenterView as dashMatchCenterView,
+} from "./dashboard/views/match-center.js";
+import {
+  resultsView as dashResultsView,
+} from "./dashboard/views/results.js";
+import {
+  liveMatchView as dashLiveMatchView,
+} from "./dashboard/views/live-match.js";
+import {
+  contentDashboardView as dashContentDashboardView,
+} from "./dashboard/views/content-dashboard.js";
 
 async function boot() {
-  const startingOnDashboard = window.location.pathname.startsWith(
-    DASH_BASE_PATH,
-  );
+  const startingOnDashboard =
+    window.location.pathname.startsWith(DASH_BASE_PATH);
 
-  if (!startingOnDashboard) crestLoader.show();
+  // Public site loader only.
+  if (!startingOnDashboard) {
+    crestLoader.show();
+  }
 
   header.mount();
   await footer.mount();
 
-  // PWA — service worker + install banner only make sense on the
-  // public site, never inside the admin dashboard.
+  // -------------------------------------------------------------
+  // PWA
+  // Public site only. Dashboard does not need install/banner logic.
+  // -------------------------------------------------------------
   if (!startingOnDashboard) {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch((err) => {
-        console.error("[pwa] service worker registration failed:", err);
+        console.error(
+          "[pwa] service worker registration failed:",
+          err,
+        );
       });
     }
+
     initInstallBanner();
   }
 
+  // -------------------------------------------------------------
+  // PUBLIC ROUTES
+  // -------------------------------------------------------------
   router
     .add("/", withMobileGate(homeView))
     .add("/news", withMobileGate(newsView))
     .add("/news/:slug", withMobileGate(newsDetailsView))
     .add("/fixtures", withMobileGate(fixturesView))
     .add("/results", withMobileGate(resultsView))
-    .add("/results/head-to-head", withMobileGate(headToHeadIndexView))
-    .add("/results/head-to-head/:teamId", withMobileGate(headToHeadDetailView))
+    .add(
+      "/results/head-to-head",
+      withMobileGate(headToHeadIndexView),
+    )
+    .add(
+      "/results/head-to-head/:teamId",
+      withMobileGate(headToHeadDetailView),
+    )
     .add("/match-reports", withMobileGate(matchReportsView))
-    .add("/match-reports/:slug", withMobileGate(matchReportDetailsView))
-    .add("/matches/:slug", withMobileGate(matchDetailsView))
+    .add(
+      "/match-reports/:slug",
+      withMobileGate(matchReportDetailsView),
+    )
+    .add(
+      "/matches/:slug",
+      withMobileGate(matchDetailsView),
+    )
     .add("/live", withMobileGate(liveMatchView))
     .add("/standings", withMobileGate(standingsView))
     .add("/players", withMobileGate(playersView))
-    .add("/players/:slug", withMobileGate(playerProfileView))
+    .add(
+      "/players/:slug",
+      withMobileGate(playerProfileView),
+    )
     .add("/gallery", withMobileGate(galleryView))
-    .add("/gallery/:slug", withMobileGate(galleryDetailsView))
-    .add("/competitions", withMobileGate(competitionsView))
-    .add("/competitions/:slug", withMobileGate(competitionDetailsView))
-    .add("/competitions/:slug/standings", withMobileGate(competitionStandingsView))
-    .add("/competitions/:slug/fixtures", withMobileGate(competitionFixturesView))
-    .add("/competitions/:slug/results", withMobileGate(competitionResultsView))
+    .add(
+      "/gallery/:slug",
+      withMobileGate(galleryDetailsView),
+    )
+    .add(
+      "/competitions",
+      withMobileGate(competitionsView),
+    )
+    .add(
+      "/competitions/:slug",
+      withMobileGate(competitionDetailsView),
+    )
+    .add(
+      "/competitions/:slug/standings",
+      withMobileGate(competitionStandingsView),
+    )
+    .add(
+      "/competitions/:slug/fixtures",
+      withMobileGate(competitionFixturesView),
+    )
+    .add(
+      "/competitions/:slug/results",
+      withMobileGate(competitionResultsView),
+    )
     .add(
       "/competitions/:slug/player-statistics",
       withMobileGate(competitionPlayerStatisticsView),
     )
-    .add("/club-profile", withMobileGate(clubProfileGeneralView))
-    .add("/club-profile/mission-vision", withMobileGate(visionMissionView))
-    .add("/club-profile/history", withMobileGate(clubHistoryView))
-    // Temporary: bare /club-records points at Honours content until
-    // Pass 4 (#7) builds the dedicated All-Time Stats page.
-    .add("/club-records", withMobileGate(clubAllTimeStatsView))
-    .add("/club-records/honours", withMobileGate(clubHonoursView))
-    .add("/officials", withMobileGate(clubOfficialsView))
-  .add("/officials", withMobileGate(clubOfficialsView))
-.add("/officials/:slug", withMobileGate(officialProfileView))
+    .add(
+      "/club-profile",
+      withMobileGate(clubProfileGeneralView),
+    )
+    .add(
+      "/club-profile/mission-vision",
+      withMobileGate(visionMissionView),
+    )
+    .add(
+      "/club-profile/history",
+      withMobileGate(clubHistoryView),
+    )
+    .add(
+      "/club-records",
+      withMobileGate(clubAllTimeStatsView),
+    )
+    .add(
+      "/club-records/honours",
+      withMobileGate(clubHonoursView),
+    )
+    .add(
+      "/officials",
+      withMobileGate(clubOfficialsView),
+    )
+    .add(
+      "/officials/:slug",
+      withMobileGate(officialProfileView),
+    )
     .add("/events", withMobileGate(eventsView))
-    .add("/events/:slug", withMobileGate(eventDetailsView))
-    .add("/supporters", withMobileGate(supportersView))
-    .add("/contact", withMobileGate(contactView))
-    .add("/report-issue", withMobileGate(reportIssueView))
+    .add(
+      "/events/:slug",
+      withMobileGate(eventDetailsView),
+    )
+    .add(
+      "/supporters",
+      withMobileGate(supportersView),
+    )
+    .add(
+      "/contact",
+      withMobileGate(contactView),
+    )
+    .add(
+      "/report-issue",
+      withMobileGate(reportIssueView),
+    )
     .add("/search", withMobileGate(searchView))
     .add("/privacy", withMobileGate(privacyView))
     .add("/terms", withMobileGate(termsView))
-    // ---------------- Admin dashboard routes ----------------
-    // (never wrapped with withMobileGate — dashboard works on any screen size)
-    .add(`${DASH_BASE_PATH}/login`, dashLoginView)
-    .add(`${DASH_BASE_PATH}/forgot-password`, dashForgotPasswordView)
-    .add(`${DASH_BASE_PATH}/reset-password`, dashResetPasswordView)
-    .add(DASH_BASE_PATH, dashHomeView)
-    .add(`${DASH_BASE_PATH}/managers`, dashManagersView)
-    .add(`${DASH_BASE_PATH}/auth-records`, dashAuthRecordsView)
-    .add(`${DASH_BASE_PATH}/system-log`, dashSystemLogView)
-    .add(`${DASH_BASE_PATH}/players`, dashPlayersView)
-    .add(`${DASH_BASE_PATH}/officials`, dashOfficialsView)
-    .add(`${DASH_BASE_PATH}/club-profile`, dashClubProfileView)
-    .add(`${DASH_BASE_PATH}/club-records`, dashClubRecordsView)
-  .add(`${DASH_BASE_PATH}/messages`, dashMessagesView)
-    .add(`${DASH_BASE_PATH}/competitions`, dashCompetitionsView)
-    .add(`${DASH_BASE_PATH}/competitions/detail`, dashCompetitionDetailView)
-    .add(`${DASH_BASE_PATH}/match-center`, dashMatchCenterView)
-    .add(`${DASH_BASE_PATH}/results`, dashResultsView)
-    .add(`${DASH_BASE_PATH}/live-match`, dashLiveMatchView)
-    .add(`${DASH_BASE_PATH}/content`, dashContentDashboardView)
-    .add("/developer", withMobileGate(developerView))
-    .add(`${DASH_BASE_PATH}/developer-profile`, dashDeveloperProfileView)
-    .add(`${DASH_BASE_PATH}/report-issue`, reportIssueDashboardView)
+
+    // -----------------------------------------------------------
+    // ADMIN DASHBOARD ROUTES
+    // Dashboard deliberately does NOT use withMobileGate.
+    // -----------------------------------------------------------
+    .add(
+      `${DASH_BASE_PATH}/login`,
+      dashLoginView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/forgot-password`,
+      dashForgotPasswordView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/reset-password`,
+      dashResetPasswordView,
+    )
+    .add(
+      DASH_BASE_PATH,
+      dashHomeView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/managers`,
+      dashManagersView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/auth-records`,
+      dashAuthRecordsView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/system-log`,
+      dashSystemLogView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/players`,
+      dashPlayersView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/officials`,
+      dashOfficialsView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/club-profile`,
+      dashClubProfileView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/club-records`,
+      dashClubRecordsView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/messages`,
+      dashMessagesView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/competitions`,
+      dashCompetitionsView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/competitions/detail`,
+      dashCompetitionDetailView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/match-center`,
+      dashMatchCenterView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/results`,
+      dashResultsView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/live-match`,
+      dashLiveMatchView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/content`,
+      dashContentDashboardView,
+    )
+    .add(
+      "/developer",
+      withMobileGate(developerView),
+    )
+    .add(
+      `${DASH_BASE_PATH}/developer-profile`,
+      dashDeveloperProfileView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/report-issue`,
+      reportIssueDashboardView,
+    )
     .notFound(notFoundView);
 
+  // -------------------------------------------------------------
+  // ROUTE AFTER
+  // -------------------------------------------------------------
   document.addEventListener("route:after", (e) => {
-    const onDashboard = e.detail.path.startsWith(DASH_BASE_PATH);
-    document.body.classList.toggle("dashboard-mode", onDashboard);
-    document.getElementById("site-header").classList.toggle(
-      "hidden",
+    const path = e.detail.path;
+
+    const onDashboard =
+      path.startsWith(DASH_BASE_PATH);
+
+    // Dashboard/public shell visibility.
+    document.body.classList.toggle(
+      "dashboard-mode",
       onDashboard,
     );
-    document.getElementById("site-footer").classList.toggle(
-      "hidden",
-      onDashboard,
-    );
-    document.getElementById("app").classList.toggle("hidden", onDashboard);
-    document.getElementById("dashboard-shell").classList.toggle(
-      "hidden",
-      !onDashboard,
-    );
+
+    document
+      .getElementById("site-header")
+      .classList.toggle("hidden", onDashboard);
+
+    document
+      .getElementById("site-footer")
+      .classList.toggle("hidden", onDashboard);
+
+    document
+      .getElementById("app")
+      .classList.toggle("hidden", onDashboard);
+
+    document
+      .getElementById("dashboard-shell")
+      .classList.toggle("hidden", !onDashboard);
+
+    // -----------------------------------------------------------
+    // SEO
+    //
+    // NEVER apply public-site indexable metadata to the dashboard.
+    // Dashboard noindex is handled at the HTTP/Netlify layer too.
+    // -----------------------------------------------------------
+    if (!onDashboard) {
+      setRouteSEO(path);
+    }
   });
 
   router.init();
 
   if (!startingOnDashboard) {
-    await new Promise((res) => setTimeout(res, 50));
+    await new Promise((resolve) => setTimeout(resolve, 50));
     await crestLoader.hide();
   }
 }
