@@ -2,42 +2,46 @@
 //
 // Shared media pipeline. Three input paths, one processing pipeline:
 //  - "Choose Existing": returns a real, already-uploaded media_library row immediately.
-//    Untouched — never goes through crop/resize/watermark/compression/Blob conversion.
-//  - "Choose From Device" and "Take Photo": both funnel through the same
-//    ratio-aware crop → watermark → tag steps, entirely in-browser, then return
-//    a PENDING object — nothing touches Supabase yet. The host page must call
-//    MediaPipeline.finalizeUpload(pending, postTitle) at actual publish time to
-//    perform the real upload + media_library insert. This guarantees nothing is
-//    saved to Supabase if the post is never published, and that a camera photo
-//    the user never publishes never leaves the browser.
-//
-//  "Take Photo" opens the device's native camera app (via a file input with
-//  capture="environment") rather than an in-page getUserMedia camera. The
-//  captured photo is then handed to the same ratio-select/crop/tag steps
-//  used for device uploads.
+//    Untouched - never goes through crop/resize/watermark/compression/Blob conversion.
+//  - "Choose From Device" and "Take Photo": both go straight to the shared crop step,
+//    then watermark + tag, entirely in-browser, then return a PENDING object.
+//    Nothing touches Supabase until the host page calls
+//    MediaPipeline.finalizeUpload(pending, postTitle) at publish time.
 
 (function () {
-  // Centralized aspect-ratio / output-dimension presets. Do not scatter
-  // width/height values elsewhere in this file — everything reads from here.
+  // Centralized aspect-ratio / output-dimension presets.
   const MEDIA_PRESETS = {
-    square:   { label: "1:1",  width: 1200, height: 1200 },
+    square:   { label: "Headshot (1:1)", width: 1200, height: 1200 },
     portrait: { label: "3:4",  width: 1200, height: 1600 },
     landscape:{ label: "4:3",  width: 1600, height: 1200 },
     wide:     { label: "16:9", width: 1280, height: 720  },
-    passport: { label: "Passport (35×45mm)", width: 413, height: 531 }
+    passport: { label: "Passport (35x45mm)", width: 413, height: 531 }
   };
 
-  // Preserves the previous hard-coded 16:9 default for the device-upload path.
-  const DEFAULT_DEVICE_PRESET = "wide";
-  // Sensible default when using Take Photo.
-  const DEFAULT_CAMERA_PRESET = "square";
+  const DEFAULT_DEVICE_PRESET = "wide"; // 16:9 for posts
 
-  const OUTPUT_QUALITY = 0.9; // JPEG compression quality used for the final Blob
+  // Only these two ratios are offered: 16:9 for posts, 1:1 headshot for profiles.
+  const ALLOWED_PRESETS = ["wide", "square"];
+  const PRESET_STORAGE_KEY = "mp_last_preset";
+
+  const OUTPUT_QUALITY = 0.9; // JPEG quality for the final Blob
+
+  function loadSavedPreset() {
+    try {
+      const k = localStorage.getItem(PRESET_STORAGE_KEY);
+      if (ALLOWED_PRESETS.includes(k)) return k;
+    } catch (e) {}
+    return DEFAULT_DEVICE_PRESET;
+  }
+  function savePreset(key) {
+    try { localStorage.setItem(PRESET_STORAGE_KEY, key); } catch (e) {}
+  }
 
   let modalEl = null;
   let allPlayers = [];
   let allOfficials = [];
   let clubCrestUrl = null;
+  let activePresetKey = DEFAULT_DEVICE_PRESET;
 
   function injectStyles() {
     if (document.getElementById("media-pipeline-styles")) return;
@@ -50,13 +54,10 @@
       .mp-step-label { font-size: 0.8rem; color: #888; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 700; }
       .mp-viewport { max-width: 100%; overflow: hidden; position: relative; background: #222; border-radius: 8px; margin: 0 auto 1rem; cursor: grab; }
       .mp-viewport.dragging { cursor: grabbing; }
-      .mp-viewport img { position: absolute; user-select: none; -webkit-user-drag: none; pointer-events: none; }
-      .mp-zoom-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1rem; }
-      .mp-zoom-row input[type="range"] { flex: 1; }
+      .mp-viewport img { position: absolute; max-width: none !important; max-height: none !important; min-width: 0; min-height: 0; margin: 0; user-select: none; -webkit-user-drag: none; pointer-events: none; }
       .mp-field { margin-bottom: 1rem; }
       .mp-field label { display: block; font-size: 0.8rem; color: #555; margin-bottom: 0.3rem; font-weight: 600; }
       .mp-tag-search { width: 100%; padding: 0.5rem 0.6rem; border: 1px solid #d3ded6; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.6rem; box-sizing: border-box; }
-      /* Horizontal, wrapping tag chips */
       .mp-tag-list { display: flex; flex-wrap: wrap; gap: 0.5rem; max-height: 180px; overflow-y: auto; padding: 0.3rem; border: 1px solid #f0f4f1; border-radius: 6px; }
       .mp-tag-chip { display: flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.7rem; border-radius: 16px; background: #f7faf8; border: 1px solid #e2ece5; font-size: 0.8rem; cursor: pointer; white-space: nowrap; }
       .mp-tag-chip.selected { background: #109b45; color: #fff; border-color: #109b45; }
@@ -67,13 +68,6 @@
       .mp-btn-secondary { background: #eee; color: #333; border: none; padding: 0.6rem 1.1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
       .mp-status { font-size: 0.82rem; margin-top: 0.5rem; color: #b3261e; min-height: 1.2em; }
       .mp-preview-final { max-width: 100%; border-radius: 8px; margin-bottom: 1rem; }
-      .mp-file-input-wrap { border: 2px dashed #d3ded6; border-radius: 8px; padding: 2rem; text-align: center; color: #888; font-size: 0.88rem; cursor: pointer; }
-      .mp-file-input-wrap:hover { border-color: #109b45; color: #109b45; }
-
-      /* Shared ratio-picker chips (used by both device upload and Take Photo) */
-      .mp-camera-ratio { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: center; margin-bottom: 0.8rem; }
-      .mp-camera-ratio-btn { border: 1px solid #d3ded6; background: #fff; color: #555; border-radius: 16px; padding: 0.35rem 0.8rem; font-size: 0.78rem; cursor: pointer; }
-      .mp-camera-ratio-btn.selected { background: #109b45; color: #fff; border-color: #109b45; }
     `;
     document.head.appendChild(style);
   }
@@ -109,8 +103,7 @@
     return Math.random().toString(36).slice(2, 8);
   }
 
-  // Fit a preset's aspect ratio inside a mobile-first bounding box, regardless
-  // of whether the preset is landscape, square, or portrait (e.g. passport).
+  // Fit a preset's aspect ratio inside a mobile-first bounding box.
   function getViewportDims(preset) {
     const MAX_W = 320, MAX_H = 320;
     const ratio = preset.width / preset.height;
@@ -119,8 +112,11 @@
     return { w, h };
   }
 
-  // ---------- Public: choice modal (Take Photo / Choose From Device / Choose Existing) ----------
-  function selectImage() {
+  // ---------- Public: choice modal ----------
+  // Optional: selectImage({ ratio: "wide" | "square" }) to force a starting ratio.
+  // With no argument, it starts from the last ratio used on this device (default 16:9).
+  function selectImage(options) {
+    activePresetKey = (options && ALLOWED_PRESETS.includes(options.ratio)) ? options.ratio : loadSavedPreset();
     return new Promise(async (resolve) => {
       injectStyles();
 
@@ -138,9 +134,9 @@
         <h2>Add Image</h2>
         <p style="font-size:0.88rem; color:#666; margin-bottom:1.2rem;">Take a new photo, upload one from your device, or reuse one already in the media library.</p>
         <div style="display:flex; gap:0.8rem; justify-content:center; flex-wrap:wrap;">
-          <button class="mp-btn-primary" id="mp-choice-camera-btn">📷 Take Photo</button>
-          <button class="mp-btn-primary" id="mp-choice-upload-btn">🖼️ Choose From Device</button>
-          <button class="mp-btn-secondary" id="mp-choice-library-btn">🗂️ Choose Existing</button>
+          <button class="mp-btn-primary" id="mp-choice-camera-btn">Take Photo</button>
+          <button class="mp-btn-primary" id="mp-choice-upload-btn">Choose From Device</button>
+          <button class="mp-btn-secondary" id="mp-choice-library-btn">Choose Existing</button>
         </div>
         <div class="mp-actions" style="justify-content:center;">
           <button class="mp-btn-secondary" id="mp-choice-cancel-btn">Cancel</button>
@@ -150,14 +146,14 @@
 
     modalEl.querySelector("#mp-choice-cancel-btn").addEventListener("click", () => closeModal(resolve));
 
-    modalEl.querySelector("#mp-choice-camera-btn").addEventListener("click", async () => {
-      await ensureSupportingData();
+    modalEl.querySelector("#mp-choice-camera-btn").addEventListener("click", () => {
+      ensureSupportingData(); // not awaited, keeps the tap valid for opening the camera
       openNativeCamera(resolve);
     });
 
-    modalEl.querySelector("#mp-choice-upload-btn").addEventListener("click", async () => {
-      await ensureSupportingData();
-      renderFileSelectStep(resolve);
+    modalEl.querySelector("#mp-choice-upload-btn").addEventListener("click", () => {
+      ensureSupportingData();
+      openDevicePicker(resolve);
     });
 
     modalEl.querySelector("#mp-choice-library-btn").addEventListener("click", async () => {
@@ -173,16 +169,14 @@
   }
 
   // ===================================================================
-  // TAKE PHOTO — opens the device's native camera app via a file input
-  // with capture="environment", instead of an in-page getUserMedia camera.
+  // TAKE PHOTO - native camera app via file input with capture
   // ===================================================================
 
   function openNativeCamera(resolve) {
-    // Lightweight holding state while the OS camera app takes over the screen.
     modalEl.innerHTML = `
       <div class="mp-box" style="text-align:center;">
         <h2>Take Photo</h2>
-        <p style="font-size:0.88rem; color:#666;">Opening your camera…</p>
+        <p style="font-size:0.88rem; color:#666;">Opening your camera...</p>
         <div class="mp-actions" style="justify-content:center;">
           <button class="mp-btn-secondary" id="mp-camera-native-cancel-btn">Cancel</button>
         </div>
@@ -192,7 +186,7 @@
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
-    input.capture = "environment"; // hints mobile browsers to open the camera app directly
+    input.capture = "environment";
     input.style.display = "none";
     document.body.appendChild(input);
 
@@ -203,9 +197,8 @@
       if (input.parentNode) input.remove();
     }
 
-    // Most mobile browsers never fire a 'cancel' event on <input type="file">, so if the
-    // user backs out of the camera app without taking a photo, detect that by checking
-    // whether a file was actually chosen shortly after the window regains focus.
+    // Most mobile browsers never fire 'cancel' on file inputs, so detect backing
+    // out of the camera by checking for a chosen file after focus returns.
     function onFocusReturn() {
       setTimeout(() => {
         if (!settled && (!input.files || !input.files[0])) {
@@ -226,7 +219,7 @@
         return;
       }
       const img = new Image();
-      img.onload = () => renderRatioSelectStep(resolve, img, file, "camera");
+      img.onload = () => renderCropStep(resolve, img, file, activePresetKey, "camera");
       img.src = URL.createObjectURL(file);
     });
 
@@ -240,93 +233,45 @@
   }
 
   // ===================================================================
-  // CHOOSE FROM DEVICE — untouched contract, ratio-aware via the shared
-  // crop engine. Also used by Take Photo after the native camera returns
-  // a photo (source="camera").
+  // CHOOSE FROM DEVICE - opens the device file picker directly
   // ===================================================================
 
-  function renderFileSelectStep(resolve) {
-    modalEl.innerHTML = `
-      <div class="mp-box">
-        <h2>Upload Media</h2>
-        <div class="mp-step-label">Choose an image</div>
-        <label class="mp-file-input-wrap">
-          📷 Click to choose an image
-          <input type="file" accept="image/png, image/jpeg, image/webp" style="display:none;" id="mp-file-input">
-        </label>
-        <div class="mp-actions">
-          <button class="mp-btn-secondary" id="mp-cancel-btn">Cancel</button>
-        </div>
-      </div>
-    `;
+  function openDevicePicker(resolve) {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/png, image/jpeg, image/webp";
+    input.style.display = "none";
+    document.body.appendChild(input);
 
-    modalEl.querySelector("#mp-cancel-btn").addEventListener("click", () => closeModal(resolve));
-    modalEl.querySelector("#mp-file-input").addEventListener("change", (e) => {
+    input.addEventListener("change", (e) => {
       const file = e.target.files[0];
-      if (!file) return;
+      input.remove();
+      if (!file) return; // choice modal stays visible
       const img = new Image();
-      img.onload = () => renderRatioSelectStep(resolve, img, file, "device");
+      img.onload = () => renderCropStep(resolve, img, file, activePresetKey, "device");
       img.src = URL.createObjectURL(file);
     });
-  }
 
-  function renderRatioSelectStep(resolve, img, originalFile, source) {
-    source = source || "device";
-    let selectedKey = source === "camera" ? DEFAULT_CAMERA_PRESET : DEFAULT_DEVICE_PRESET;
-
-    modalEl.innerHTML = `
-      <div class="mp-box">
-        <h2>${source === "camera" ? "Take Photo" : "Upload Media"}</h2>
-        <div class="mp-step-label">Choose aspect ratio</div>
-        <div class="mp-camera-ratio" id="mp-device-ratio">
-          ${Object.keys(MEDIA_PRESETS).map(key => `
-            <button type="button" class="mp-camera-ratio-btn ${key === selectedKey ? 'selected' : ''}" data-key="${key}">${MEDIA_PRESETS[key].label}</button>
-          `).join("")}
-        </div>
-        <div class="mp-actions">
-          <button class="mp-btn-secondary" id="mp-back-btn">Back</button>
-          <button class="mp-btn-primary" id="mp-ratio-continue-btn">Continue</button>
-        </div>
-      </div>
-    `;
-
-    modalEl.querySelectorAll(".mp-camera-ratio-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        selectedKey = btn.dataset.key;
-        modalEl.querySelectorAll(".mp-camera-ratio-btn").forEach(b => b.classList.toggle("selected", b === btn));
-      });
-    });
-
-    modalEl.querySelector("#mp-back-btn").addEventListener("click", () => {
-      if (source === "camera") {
-        openNativeCamera(resolve);
-      } else {
-        renderFileSelectStep(resolve);
-      }
-    });
-    modalEl.querySelector("#mp-ratio-continue-btn").addEventListener("click", () => {
-      renderCropStep(resolve, img, originalFile, selectedKey, source);
-    });
+    input.click();
   }
 
   // ===================================================================
-  // SHARED: ratio-aware crop step (used by both device uploads and camera captures)
+  // SHARED: crop step with ratio dropdown, drag and pinch zoom
   // ===================================================================
 
   function renderCropStep(resolve, img, originalFile, presetKey, source) {
-    const preset = MEDIA_PRESETS[presetKey] || MEDIA_PRESETS[DEFAULT_DEVICE_PRESET];
+    if (!ALLOWED_PRESETS.includes(presetKey)) presetKey = DEFAULT_DEVICE_PRESET;
+    const preset = MEDIA_PRESETS[presetKey];
     const { w: viewportW, h: viewportH } = getViewportDims(preset);
 
     modalEl.innerHTML = `
       <div class="mp-box">
         <h2>${source === "camera" ? "Take Photo" : "Upload Media"}</h2>
         <div class="mp-step-label">Crop to ${escapeHtml(preset.label)}</div>
+        <select id="mp-ratio-select" class="mp-tag-search">
+          ${ALLOWED_PRESETS.map(k => `<option value="${k}" ${k === presetKey ? "selected" : ""}>${escapeHtml(MEDIA_PRESETS[k].label)}</option>`).join("")}
+        </select>
         <div class="mp-viewport" id="mp-viewport" style="width:${viewportW}px; height:${viewportH}px;"></div>
-        <div class="mp-zoom-row">
-          <span>🔍−</span>
-          <input type="range" id="mp-zoom-slider" min="0" max="100" value="0">
-          <span>🔍+</span>
-        </div>
         <div class="mp-actions">
           <button class="mp-btn-secondary" id="mp-back-btn">Back</button>
           <button class="mp-btn-primary" id="mp-confirm-crop-btn">Confirm Crop</button>
@@ -352,6 +297,8 @@
       ty = Math.min(0, Math.max(viewportH - h, ty));
     }
     function applyTransform() {
+      imgEl.style.maxWidth = "none";
+      imgEl.style.maxHeight = "none";
       imgEl.style.width = naturalW * scale + "px";
       imgEl.style.height = naturalH * scale + "px";
       imgEl.style.left = tx + "px";
@@ -361,35 +308,73 @@
     imgEl.src = img.src;
     clamp(); applyTransform();
 
-    let dragging = false, lastX = 0, lastY = 0;
-    function startDrag(x, y) { dragging = true; lastX = x; lastY = y; viewport.classList.add("dragging"); }
-    function moveDrag(x, y) {
-      if (!dragging) return;
-      tx += x - lastX; ty += y - lastY;
-      lastX = x; lastY = y;
+    // Free-hand placement and zoom: one finger drags, two fingers pinch, wheel on desktop.
+    viewport.style.touchAction = "none";
+    const pointers = new Map();
+    let pinchStartDist = 0, pinchStartScale = scale;
+
+    function zoomAt(newScale, cx, cy) {
+      newScale = Math.min(coverScale * 4, Math.max(coverScale, newScale));
+      const relX = (cx - tx) / scale, relY = (cy - ty) / scale;
+      scale = newScale;
+      tx = cx - relX * scale;
+      ty = cy - relY * scale;
       clamp(); applyTransform();
     }
-    function endDrag() { dragging = false; viewport.classList.remove("dragging"); }
+    function twoPoints() {
+      const [a, b] = [...pointers.values()];
+      return { a, b, dist: Math.hypot(a.x - b.x, a.y - b.y) };
+    }
 
-    viewport.addEventListener("mousedown", (e) => startDrag(e.clientX, e.clientY));
-    window.addEventListener("mousemove", (e) => moveDrag(e.clientX, e.clientY));
-    window.addEventListener("mouseup", endDrag);
-    viewport.addEventListener("touchstart", (e) => { const t = e.touches[0]; startDrag(t.clientX, t.clientY); });
-    viewport.addEventListener("touchmove", (e) => { const t = e.touches[0]; moveDrag(t.clientX, t.clientY); e.preventDefault(); }, { passive: false });
-    viewport.addEventListener("touchend", endDrag);
+    viewport.addEventListener("pointerdown", (e) => {
+      viewport.setPointerCapture(e.pointerId);
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      viewport.classList.add("dragging");
+      if (pointers.size === 2) {
+        pinchStartDist = twoPoints().dist;
+        pinchStartScale = scale;
+      }
+    });
 
-    modalEl.querySelector("#mp-zoom-slider").addEventListener("input", (e) => {
-      const oldScale = scale;
-      const zoomExtra = parseInt(e.target.value) / 100;
-      scale = coverScale * (1 + zoomExtra * 2);
-      const centerX = viewportW / 2, centerY = viewportH / 2;
-      const relX = (centerX - tx) / oldScale, relY = (centerY - ty) / oldScale;
-      tx = centerX - relX * scale; ty = centerY - relY * scale;
-      clamp(); applyTransform();
+    viewport.addEventListener("pointermove", (e) => {
+      const prev = pointers.get(e.pointerId);
+      if (!prev) return;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.size === 1) {
+        tx += e.clientX - prev.x;
+        ty += e.clientY - prev.y;
+        clamp(); applyTransform();
+      } else if (pointers.size === 2) {
+        const { a, b, dist } = twoPoints();
+        const rect = viewport.getBoundingClientRect();
+        zoomAt(pinchStartScale * (dist / pinchStartDist),
+               (a.x + b.x) / 2 - rect.left, (a.y + b.y) / 2 - rect.top);
+      }
+    });
+
+    function endPointer(e) {
+      pointers.delete(e.pointerId);
+      if (pointers.size < 2) { pinchStartDist = 0; pinchStartScale = scale; }
+      if (pointers.size === 0) viewport.classList.remove("dragging");
+    }
+    viewport.addEventListener("pointerup", endPointer);
+    viewport.addEventListener("pointercancel", endPointer);
+
+    viewport.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const rect = viewport.getBoundingClientRect();
+      zoomAt(scale * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientX - rect.left, e.clientY - rect.top);
+    }, { passive: false });
+
+    // Ratio dropdown: remember the choice on this device and redraw the frame.
+    modalEl.querySelector("#mp-ratio-select").addEventListener("change", (e) => {
+      activePresetKey = e.target.value;
+      savePreset(activePresetKey);
+      renderCropStep(resolve, img, originalFile, activePresetKey, source);
     });
 
     modalEl.querySelector("#mp-back-btn").addEventListener("click", () => {
-      renderRatioSelectStep(resolve, img, originalFile, source);
+      renderChoiceStep(resolve);
     });
 
     modalEl.querySelector("#mp-confirm-crop-btn").addEventListener("click", () => {
@@ -406,7 +391,7 @@
   }
 
   // ===================================================================
-  // SHARED: tag step → produces the PENDING object (unchanged contract)
+  // SHARED: tag step -> produces the PENDING object (unchanged contract)
   // ===================================================================
 
   function renderTagStep(resolve, croppedCanvas, goBack) {
@@ -416,8 +401,8 @@
         <div class="mp-step-label">Tag participants (optional)</div>
         <img class="mp-preview-final" src="${croppedCanvas.toDataURL("image/jpeg", 0.9)}">
         <div class="mp-field">
-          <label>Tag Players / Officials (optional — tap to select)</label>
-          <input type="text" class="mp-tag-search" id="mp-tag-search" placeholder="Search…">
+          <label>Tag Players / Officials (optional - tap to select)</label>
+          <input type="text" class="mp-tag-search" id="mp-tag-search" placeholder="Search...">
           <div class="mp-tag-list" id="mp-tag-list"></div>
         </div>
         <div class="mp-status" id="mp-status"></div>
@@ -436,9 +421,9 @@
 
       const items = [
         ...allPlayers.filter(p => !term || p.full_name.toLowerCase().includes(term) || (p.team_name || "").toLowerCase().includes(term))
-          .map(p => ({ key: `player:${p.id}`, type: "player", id: p.id, name: p.team_name || p.full_name, label: `🧑 ${p.team_name || p.full_name}` })),
+          .map(p => ({ key: `player:${p.id}`, type: "player", id: p.id, name: p.team_name || p.full_name, label: p.team_name || p.full_name })),
         ...allOfficials.filter(o => !term || o.full_name.toLowerCase().includes(term))
-          .map(o => ({ key: `official:${o.id}`, type: "official", id: o.id, name: o.full_name, label: `🎽 ${o.full_name}` })),
+          .map(o => ({ key: `official:${o.id}`, type: "official", id: o.id, name: o.full_name, label: o.full_name + " (Official)" })),
       ];
 
       listEl.innerHTML = items.length
@@ -535,7 +520,7 @@
         <div class="mp-box" style="max-width: 700px;">
           <h2>Choose from Media Library</h2>
           <div class="mp-field">
-            <input type="text" class="mp-tag-search" id="mp-lib-search" placeholder="Search by slug, player, or official…">
+            <input type="text" class="mp-tag-search" id="mp-lib-search" placeholder="Search by slug, player, or official...">
           </div>
           <div id="mp-lib-status" style="font-size:0.82rem; color:#888; margin-bottom:0.6rem;">Loading...</div>
           <div id="mp-lib-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.7rem; max-height: 400px; overflow-y: auto;"></div>
@@ -601,7 +586,7 @@
     });
   }
 
-  // ---------- Finalize a pending upload (called at actual post-publish time, unchanged) ----------
+  // ---------- Finalize a pending upload (unchanged) ----------
   async function finalizeUpload(pending, postTitle) {
     await ensureSupportingData();
 
