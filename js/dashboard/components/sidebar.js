@@ -1,9 +1,11 @@
+// sidebar.js
 import { router } from '../../router.js';
 import { dashPath } from '../config.js';
 import { supabaseClient } from '../supabase-client-esm.js';
 import { OWNER_EMAIL } from '../owner-config.js';
 
 const ICONS = {
+  dashboard: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M3 9.5 10 3l7 6.5"/><path d="M4.5 8.5V16a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V8.5"/><path d="M8 17v-4.5h4V17"/></svg>`,
   player: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="4.8" r="2.1"/><path d="M10 7.2v4.8"/><path d="M10 9.5 7 11.5M10 9.5l3.3-1"/><path d="M10 12 7 17M10 12l3.3 4.5"/></svg>`,
   official: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M2.5 10h4"/><circle cx="13" cy="10" r="4"/><circle cx="13" cy="10" r="1.2"/><path d="M13 6v1.4"/></svg>`,
   clubStadium: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M2 9c0-2.8 3.6-5 8-5s8 2.2 8 5"/><path d="M2 9v3c0 2.8 3.6 5 8 5s8-2.2 8-5V9"/><ellipse cx="10" cy="9" rx="4" ry="1.6"/></svg>`,
@@ -139,6 +141,16 @@ const SIDEBAR_STYLES = `
 function buildNavMarkup(role, email) {
   const sections = NAV_SECTIONS[role] || [];
 
+  // Standalone home link above the role-specific sections, so there's
+  // always a way back to the dashboard landing page from any sub-page.
+  const homeSection = `
+    <div class="nav-section">
+      <a class="nav-link" href="${dashPath('/')}">
+        <span class="icon">${ICONS.dashboard}</span> Dashboard
+      </a>
+    </div>
+  `;
+
   const roleSections = sections
     .map(
       (section) => {
@@ -179,7 +191,7 @@ function buildNavMarkup(role, email) {
     </div>
   `;
 
-  return roleSections + supportSection;
+  return homeSection + roleSections + supportSection;
 }
 
 function highlightActiveLink(pathname, search) {

@@ -744,6 +744,13 @@ export async function resultsView(params, query) {
 
   function isVisibleToManager(m) {
 
+    if (managerHasFullAccess(admin)) {
+      // match_manager: full access, no time-window restriction —
+      // that window only applies to content_manager's limited,
+      // delegated access.
+      return true;
+    }
+
     return (
       isDelegatedToManager(m) &&
       isWithinActionWindow(m)
