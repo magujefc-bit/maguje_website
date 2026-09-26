@@ -19,8 +19,6 @@ const QUICK_LINKS = [
 const LEGAL_LINKS = [
   { label: "Privacy Policy", path: "/privacy" },
   { label: "Terms of Service", path: "/terms" },
-  { label: "Contact", path: "/contact" },
-  { label: "Report an Issue", path: "/report-issue" },
 ];
 
 const CLUB_LINKS = [
@@ -29,7 +27,6 @@ const CLUB_LINKS = [
   { label: "Vision & Mission", path: "/club-profile/mission-vision" },
   { label: "Officials", path: "/officials" },
   { label: "Honours", path: "/club-records/honours" },
-  { label: "Join Supporters", path: "/supporters" },
 ];
 
 

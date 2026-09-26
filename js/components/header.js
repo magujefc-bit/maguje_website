@@ -1,3 +1,4 @@
+// js/components/header.js
 import { openAuthModal } from "./auth-modal.js";
 import { supabase } from "../supabase-client.js";
 import { getProfileSnapshot, logout } from "../auth.js";
@@ -75,12 +76,6 @@ const NAV_GROUPS = [
       { label: "Match Reports", path: "/match-reports" },
       { label: "Gallery", path: "/gallery" },
       { label: "Events", path: "/events" },
-    ],
-  },
-  {
-    title: "More",
-    items: [
-      { label: "Contact", path: "/contact" },
     ],
   },
 ];

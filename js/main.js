@@ -39,7 +39,6 @@ import { clubAllTimeStatsView } from "./views/club-all-time-stats.js";
 import { clubHonoursView } from "./views/club-honours.js";
 import { eventsView } from "./views/events.js";
 import { eventDetailsView } from "./views/event-details.js";
-import { supportersView } from "./views/supporters.js";
 import { contactView } from "./views/contact.js";
 import { reportIssueView } from "./views/report-issue.js";
 import { searchView } from "./views/search.js";
@@ -236,10 +235,7 @@ async function boot() {
       "/events/:slug",
       withMobileGate(eventDetailsView),
     )
-    .add(
-      "/supporters",
-      withMobileGate(supportersView),
-    )
+
     .add(
       "/contact",
       withMobileGate(contactView),
