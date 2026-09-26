@@ -21,7 +21,6 @@ const LEGAL_LINKS = [
   { label: "Terms of Service", path: "/terms" },
   { label: "Contact", path: "/contact" },
   { label: "Report an Issue", path: "/report-issue" },
-  { label: "Admin Login", path: "/maguje-dashboard/login" },
 ];
 
 const CLUB_LINKS = [

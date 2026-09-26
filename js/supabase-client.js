@@ -1,13 +1,12 @@
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-
-const SUPABASE_URL = "https://pxtexddyvthgmietwhyc.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4dGV4ZGR5dnRoZ21pZXR3aHljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2NjY3MzcsImV4cCI6MjEwMTI0MjczN30.zO-XzH622ihYWrHHQ8cijXzlxWtNWQzLI42gker_Eq8";
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false },
-  realtime: { params: { eventsPerSecond: 5 } },
-});
+// Single shared Supabase client for the whole site (public + dashboard).
+// The actual client is created once in /js/dashboard/supabase-client.js —
+// a classic script that always loads before this ES module executes on
+// every route (the dashboard's classic scripts are present in the SPA
+// shell whether you're on a public page or in /maguje-dashboard).
+// Re-exporting that same instance here (instead of calling createClient
+// again) means a login anywhere in the app — public or dashboard —
+// is the same session everywhere, with no separate client to sync.
+export const supabase = window.supabaseClient;
 
 // Helper: attach opponent team objects to match rows when the PostgREST FK
 // relationship is unavailable. Accepts an array of match objects and returns

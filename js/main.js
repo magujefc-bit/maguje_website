@@ -8,6 +8,7 @@ import { setRouteSEO } from "./utils/seo.js";
 
 import { withMobileGate } from "./utils/mobile-gate.js";
 
+import { profileView } from "./views/profile.js";
 import { homeView } from "./views/home.js";
 import { newsView } from "./views/news.js";
 import { newsDetailsView } from "./views/news-details.js";
@@ -185,6 +186,7 @@ async function boot() {
       "/competitions/:slug",
       withMobileGate(competitionDetailsView),
     )
+  
     .add(
       "/competitions/:slug/standings",
       withMobileGate(competitionStandingsView),
@@ -249,6 +251,7 @@ async function boot() {
     .add("/search", withMobileGate(searchView))
     .add("/privacy", withMobileGate(privacyView))
     .add("/terms", withMobileGate(termsView))
+  .add("/profile", withMobileGate(profileView))
 
     // -----------------------------------------------------------
     // ADMIN DASHBOARD ROUTES
