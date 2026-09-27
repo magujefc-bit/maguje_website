@@ -91,7 +91,13 @@ body.auth-mode #main { flex: 0; max-width: none; padding: 0; }
 #dashboard-shell .nav-link .icon { width: 1.1rem; text-align: center; }
 
 /* ===== Main content ===== */
-#dashboard-shell #main { flex: 1; padding: 2rem; max-width: 1100px; }
+/* min-width: 0 overrides the flex-item default of min-width: auto, which
+   otherwise stops #main shrinking below the min-content width of whatever
+   is inside it (e.g. a wide table). Without it, a long table forces this
+   whole column — and the page — wider than the viewport instead of letting
+   .table-wrap's own overflow-x:auto take care of it. */
+#dashboard-shell { min-width: 0; }
+#dashboard-shell #main { flex: 1; padding: 2rem; max-width: 1100px; min-width: 0; }
 #dashboard-shell #main h1 { margin: 0 0 0.3rem; font-size: 1.4rem; color: #109b45; }
 #dashboard-shell #main p.sub { color: #666; margin: 0 0 1.2rem; font-size: 0.9rem; }
 #dashboard-shell .back-link { font-size: 0.85rem; color: #109b45; text-decoration: none; font-weight: 600; }
@@ -133,7 +139,7 @@ body.auth-mode #main { flex: 0; max-width: none; padding: 0; }
 #dashboard-shell .empty-msg { color: #999; font-size: 0.85rem; padding: 0.6rem 0; }
 
 /* ===== Tables (generic — used by any data table across pages) ===== */
-#dashboard-shell .table-wrap { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow-x: auto; }
+#dashboard-shell .table-wrap { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
 #dashboard-shell .data-table { width: 100%; border-collapse: collapse; }
 #dashboard-shell .data-table th { text-align: left; background: #eaf6ee; color: #0d7f39; padding: 0.6rem 0.8rem; font-size: 0.78rem; white-space: nowrap; }
 #dashboard-shell .data-table td { padding: 0.6rem 0.8rem; border-top: 1px solid #f0f4f1; font-size: 0.85rem; }

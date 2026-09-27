@@ -11,12 +11,6 @@ injectStyle('supporters-view', `
   .stat-hero__value { font-size: 1.8rem; font-weight: 700; color: #109b45; line-height: 1; }
   .stat-hero__label { font-size: 0.8rem; color: #777; margin-top: 3px; }
 
-  .period-chart { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 1.3rem; margin-bottom: 1.5rem; }
-  .period-chart__toggle { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
-  .period-chart__btn { padding: 0.4rem 0.9rem; border: 1px solid #d3ded6; background: #fff; border-radius: 999px; font-size: 0.8rem; cursor: pointer; color: #555; }
-  .period-chart__btn.active { background: #109b45; color: #fff; border-color: #109b45; }
-  .period-chart__canvas-wrap { height: 260px; position: relative; }
-
   .filters { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center; }
   .filters input[type="text"] { width: 240px; padding: 0.5rem 0.7rem; border: 1px solid #d3ded6; border-radius: 6px; font-size: 0.85rem; }
 
@@ -200,4 +194,3 @@ export async function supportersView() {
 
   return { cleanup: null };
 }
-

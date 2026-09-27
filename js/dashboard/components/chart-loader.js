@@ -3,7 +3,7 @@
 // that actually render a chart pay for the script, and the public site
 // never loads it at all. Reused by any dashboard page that needs a
 // graph (installs, supporters, and later the match-analytics pages).
-const CHART_JS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js';
+const CHART_JS_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js';
 
 let chartPromise = null;
 
@@ -24,4 +24,3 @@ export function loadChart() {
 
   return chartPromise;
 }
-
