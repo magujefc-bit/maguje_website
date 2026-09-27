@@ -53,21 +53,26 @@ export function getCachedAccountType() {
 
 export async function getProfileSnapshot() {
   const accountType = await resolveAccountType();
-  if (!accountType) return { accountType: null, avatarUrl: null };
+  if (!accountType) return { accountType: null, avatarUrl: null, fullName: null, email: null };
 
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return { accountType: null, avatarUrl: null };
+  if (!session) return { accountType: null, avatarUrl: null, fullName: null, email: null };
 
   const table = accountType === 'admin' ? 'admin_profiles' : 'supporters';
   const idColumn = accountType === 'admin' ? 'admin_id' : 'id';
 
   const { data } = await supabase
     .from(table)
-    .select('avatar_url')
+    .select('avatar_url, full_name')
     .eq(idColumn, session.user.id)
     .maybeSingle();
 
-  return { accountType, avatarUrl: data?.avatar_url || null };
+  return {
+    accountType,
+    avatarUrl: data?.avatar_url || null,
+    fullName: data?.full_name || null,
+    email: session.user.email,
+  };
 }
 
 export async function login(email, password) {
