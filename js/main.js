@@ -8,6 +8,8 @@ import { setRouteSEO } from "./utils/seo.js";
 
 import { withMobileGate } from "./utils/mobile-gate.js";
 
+import { initSessionGuard } from "./session-guard.js";
+
 import { profileView } from "./views/profile.js";
 import { homeView } from "./views/home.js";
 import { newsView } from "./views/news.js";
@@ -121,6 +123,11 @@ async function boot() {
 
   header.mount();
   await footer.mount();
+
+  // Idle-timeout tracking: 20 min for admins, 7 days for supporters.
+  // Runs unconditionally — same session, same guard, on both the
+  // public site and the dashboard.
+  initSessionGuard();
 
   // -------------------------------------------------------------
   // PWA

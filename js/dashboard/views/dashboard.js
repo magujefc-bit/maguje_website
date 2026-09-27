@@ -1,4 +1,4 @@
-// dashboard-view.js
+// js/dashboard/views/dashboard.js
 import { dashPath } from '../config.js';
 import { viewContainer } from '../view-container.js';
 import { requireAdmin } from '../auth-gate.js';
@@ -36,7 +36,6 @@ const CARD_ICONS = {
   systemLog: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M7 3h6a1 1 0 0 1 1 1v1H6V4a1 1 0 0 1 1-1z"/><rect x="4.5" y="4.5" width="11" height="13.5" rx="1.3"/><path d="M7 9h6M7 12h6M7 15h4"/></svg>`,
   developer: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M7 6 3 10l4 4"/><path d="M13 6l4 4-4 4"/></svg>`,
   bugIssueRecords: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="2.8" width="11" height="14.4" rx="1.4"/><path d="M5.3 7h6.4M5.3 9.6h6.4M5.3 12.2h4.4"/><circle cx="15.5" cy="4.5" r="1.7"/><path d="M15.5 6.2v3.6"/><path d="M13.9 7.4h1.3M13.9 9h1.5M17.1 7.4h-1.3M17.1 9h-1.5"/></svg>`,
-  bugIssue: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="5.3" r="1.6"/><path d="M8.8 4 7.6 2.6M11.2 4 12.4 2.6"/><ellipse cx="10" cy="11.8" rx="3.4" ry="4.6"/><path d="M10 7.2v9"/><path d="M7 10h-2.2M7 13h-2.4M13 10h2.2M13 13h2.4"/></svg>`,
   messages: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="4.5" width="15" height="11" rx="1.5"/><path d="M3 5.5l7 6 7-6"/></svg>`,
   player: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="4.8" r="2.1"/><path d="M10 7.2v4.8"/><path d="M10 9.5 7 11.5M10 9.5l3.3-1"/><path d="M10 12 7 17M10 12l3.3 4.5"/></svg>`,
   official: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M2.5 10h4"/><circle cx="13" cy="10" r="4"/><circle cx="13" cy="10" r="1.2"/><path d="M13 6v1.4"/></svg>`,
@@ -106,27 +105,22 @@ const ROLE_CONFIG = {
   },
 };
 
-// Every role can report a bug (this is the public submission link, not
-// the owner-only "Bug Reports" viewer above) — add it once, to all roles.
-const REPORT_ISSUE_CARD = {
-  title: 'Report an Issue',
-  desc: 'Spotted a bug or something off? Let us know.',
-  href: '/report-issue',
-  icon: CARD_ICONS.bugIssue,
-};
-
 export async function dashboardView() {
   const admin = await requireAdmin();
   if (!admin) return { cleanup: null };
 
   const config = ROLE_CONFIG[admin.role];
-  const visibleCards = [
-    ...config.cards.filter((c) => !c.ownerOnly || admin.email === OWNER_EMAIL),
-    REPORT_ISSUE_CARD,
-  ];
+  const visibleCards = config.cards.filter((c) => !c.ownerOnly || admin.email === OWNER_EMAIL);
+
+  const { data: profile } = await supabaseClient
+    .from('admin_profiles')
+    .select('full_name')
+    .eq('admin_id', admin.id)
+    .maybeSingle();
 
   const rawName = admin.email.split('@')[0];
-  const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+  const fallbackName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+  const displayName = (profile?.full_name || '').trim() || fallbackName;
   const welcomeLine = WELCOME_COPY[admin.role] || "Here's what you can manage from your account.";
 
   viewContainer.render(`

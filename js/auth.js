@@ -1,4 +1,3 @@
-// js/auth.js
 import { supabase } from './supabase-client.js';
 import { dashPath } from './dashboard/config.js';
 
@@ -54,26 +53,21 @@ export function getCachedAccountType() {
 
 export async function getProfileSnapshot() {
   const accountType = await resolveAccountType();
-  if (!accountType) return { accountType: null, avatarUrl: null, fullName: null, email: null };
+  if (!accountType) return { accountType: null, avatarUrl: null };
 
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return { accountType: null, avatarUrl: null, fullName: null, email: null };
+  if (!session) return { accountType: null, avatarUrl: null };
 
   const table = accountType === 'admin' ? 'admin_profiles' : 'supporters';
   const idColumn = accountType === 'admin' ? 'admin_id' : 'id';
 
   const { data } = await supabase
     .from(table)
-    .select('avatar_url, full_name')
+    .select('avatar_url')
     .eq(idColumn, session.user.id)
     .maybeSingle();
 
-  return {
-    accountType,
-    avatarUrl: data?.avatar_url || null,
-    fullName: data?.full_name || null,
-    email: session.user.email,
-  };
+  return { accountType, avatarUrl: data?.avatar_url || null };
 }
 
 export async function login(email, password) {
@@ -154,10 +148,17 @@ export function touchActivity() {
 
   supabase.auth.getSession().then(({ data: { session } }) => {
     if (!session) return;
-    supabase.from('user_activity').upsert({
-      id: session.user.id,
-      last_active_at: new Date().toISOString(),
-    });
+    supabase
+      .from('user_activity')
+      .upsert({
+        id: session.user.id,
+        last_active_at: new Date().toISOString(),
+      })
+      .then(({ error }) => {
+        if (error) {
+          console.error('[session-guard] failed to write user_activity:', error);
+        }
+      });
   });
 }
 

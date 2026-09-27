@@ -21,11 +21,50 @@ body.dashboard-mode {
 body.auth-mode { align-items: center; justify-content: center; }
 body.auth-mode #main { flex: 0; max-width: none; padding: 0; }
 
-/* ===== Sidebar ===== */
-#dashboard-shell { box-sizing: border-box; }
+/* ===== Shell layout =====
+   #dashboard-shell is the actual flex container for #sidebar (via
+   #app-sidebar-root's display:contents flattening it up) and #main —
+   this was previously missing, so the sidebar and main content were
+   stacking as plain block boxes instead of sitting side by side. */
+#dashboard-shell { display: flex; box-sizing: border-box; }
 #dashboard-shell * { box-sizing: border-box; }
 #dashboard-shell #app-sidebar-root { display: contents; }
 
+/* ===== Mobile topbar (hidden on desktop; shown under the 800px
+   breakpoint below) and off-canvas drawer backdrop ===== */
+#dashMobileTopbar {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 56px;
+  background: #046926;
+  align-items: center;
+  padding: 0 1rem;
+  z-index: 1000;
+}
+.dash-topbar-crest { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; background: #ffffff14; }
+.dash-topbar-title {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  color: #fff; font-weight: 700; font-size: 1rem;
+}
+#dashMenuToggle {
+  margin-left: auto;
+  background: none; border: none; padding: 0.3rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+
+#dashDrawerBackdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  z-index: 999;
+}
+#dashDrawerBackdrop.open { opacity: 1; pointer-events: auto; }
+
+/* ===== Sidebar ===== */
 #dashboard-shell #sidebar {
   width: 240px;
   background: #046926;
@@ -50,12 +89,6 @@ body.auth-mode #main { flex: 0; max-width: none; padding: 0; }
 #dashboard-shell .nav-link:hover { background: #ffffff14; }
 #dashboard-shell .nav-link.active { background: #ffffff22; color: #fff; font-weight: 600; }
 #dashboard-shell .nav-link .icon { width: 1.1rem; text-align: center; }
-
-#dashboard-shell .sidebar-footer { padding: 0.9rem; border-top: 1px solid #ffffff1a; }
-#dashboard-shell #logoutBtn { width: 100%; background: transparent; border: 1px solid #ffffff40; color: #fff; padding: 0.5rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
-#dashboard-shell #logoutBtn:hover { background: #ffffff14; }
-
-#dashboard-shell #menuToggle { display: none; background: #099220; color: #fff; border: none; padding: 0.6rem 1rem; font-size: 1rem; width: 100%; text-align: left; }
 
 /* ===== Main content ===== */
 #dashboard-shell #main { flex: 1; padding: 2rem; max-width: 1100px; }
@@ -126,21 +159,26 @@ body.auth-mode #main { flex: 0; max-width: none; padding: 0; }
 
 /* ===== Responsive ===== */
 @media (max-width: 800px) {
-  body.dashboard-mode { flex-direction: column; }
-  #dashboard-shell #sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; position: static; height: auto; }
-  #dashboard-shell #menuToggle { display: block; }
-  #dashboard-shell nav#nav { display: none; width: 100%; }
-  #dashboard-shell nav#nav.open { display: block; }
-  #dashboard-shell .sidebar-header { display: none; }
-  #dashboard-shell .sidebar-footer {
-    width: 100%;
-    display: none;
-  }
+  #dashMobileTopbar { display: flex; }
+  #dashDrawerBackdrop { display: block; }
 
-  #dashboard-shell .sidebar-footer.open {
-    display: block;
+  /* Sidebar becomes an off-canvas drawer sliding in from the right,
+     matching the public site's mobile-menu pattern — it no longer
+     sits in flow pushing #main down. */
+  #dashboard-shell #sidebar {
+    position: fixed;
+    top: 0; right: 0;
+    width: min(82vw, 300px);
+    height: 100vh;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    z-index: 1001;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.2);
   }
-  #dashboard-shell #main { padding: 1.2rem; }
+  #dashboard-shell #sidebar.open { transform: translateX(0); }
+
+  #dashboard-shell #main { padding: 1.2rem; padding-top: calc(56px + 1.2rem); }
   #dashboard-shell .field-grid, #dashboard-shell .field-grid.three { grid-template-columns: 1fr; }
   #dashboard-shell .modal-box { max-width: 100%; }
 }
