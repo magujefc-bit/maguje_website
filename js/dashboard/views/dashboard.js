@@ -20,11 +20,6 @@ injectStyle('dashboard-view', `
   .card-link p { margin: 0; font-size: 0.82rem; color: #777; line-height: 1.4; }
   .card-arrow { position: absolute; top: 1.2rem; right: 1.3rem; color: #109b45; font-weight: 700; font-size: 1rem; }
   @media (max-width: 800px) { .welcome-hero { padding: 1.4rem 1.3rem; } }
-  .install-stat { background: #fff; border: 1px solid #e2ece5; border-radius: 12px; padding: 1.1rem 1.3rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.9rem; max-width: 320px; }
-  .install-stat__icon { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #109b45, #046926); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .install-stat__icon svg { width: 19px; height: 19px; }
-  .install-stat__value { font-size: 1.4rem; font-weight: 700; color: #109b45; line-height: 1; }
-  .install-stat__label { font-size: 0.78rem; color: #777; margin-top: 2px; }
 `);
 
 // Card icons — SVG (white stroke) to match the sidebar's icon style,
@@ -72,6 +67,8 @@ const ROLE_CONFIG = {
       { title: 'Managers', desc: 'Invite, deactivate, or reactivate admin accounts.', href: dashPath('/managers'), icon: CARD_ICONS.groups },
       { title: 'Auth Records', desc: 'Check login/auth history for all accounts.', href: dashPath('/auth-records'), icon: CARD_ICONS.authRecord },
       { title: 'System Log', desc: 'Review recent admin activity across the system.', href: dashPath('/system-log'), icon: CARD_ICONS.systemLog },
+      { title: 'App Installs', desc: 'Install trends over time, weekly and monthly.', href: dashPath('/installs'), icon: CARD_ICONS.installs },
+      { title: 'Supporters', desc: 'View, search, and manage supporter accounts.', href: dashPath('/supporters'), icon: CARD_ICONS.groups },
       { title: 'Developer Page', desc: 'Strictly for MAGUJE FC developer.', href: dashPath('/developer-profile'), icon: CARD_ICONS.developer, ownerOnly: true },
       { title: 'Bug Reports', desc: 'Review issues submitted by admins and visitors.', href: dashPath('/report-issue'), icon: CARD_ICONS.bugIssueRecords, ownerOnly: true },
     ],
@@ -83,6 +80,7 @@ const ROLE_CONFIG = {
       { title: 'Officials', desc: 'Manage coaches and club officials.', href: dashPath('/officials'), icon: CARD_ICONS.official },
       { title: 'Club Profile & Contacts', desc: 'Edit club info, contacts, and social links.', href: dashPath('/club-profile'), icon: CARD_ICONS.clubStadium },
       { title: 'Club Records', desc: 'View club records.', href: dashPath('/club-records'), icon: CARD_ICONS.clubRecord },
+      { title: 'Supporters', desc: 'View, search, and manage supporter accounts.', href: dashPath('/supporters'), icon: CARD_ICONS.groups },
     ],
   },
   match_manager: {
@@ -129,21 +127,8 @@ export async function dashboardView() {
       <p>${welcomeLine}</p>
       <span class="hero-role-badge">${admin.role.replace('_', ' ')}</span>
     </div>
-    ${admin.email === OWNER_EMAIL ? `
-      <div class="install-stat" id="installStat">
-        <span class="install-stat__icon">${CARD_ICONS.installs}</span>
-        <div>
-          <div class="install-stat__value" id="installCount">…</div>
-          <div class="install-stat__label">App Installs</div>
-        </div>
-      </div>
-    ` : ''}
     <div class="dashboard-grid" id="summaryGrid"></div>
   `);
-
-  if (admin.email === OWNER_EMAIL) {
-    loadInstallCount();
-  }
 
   const grid = document.getElementById('summaryGrid');
   grid.innerHTML = visibleCards
@@ -159,21 +144,4 @@ export async function dashboardView() {
     .join('');
 
   return { cleanup: null };
-}
-
-async function loadInstallCount() {
-  const el = document.getElementById('installCount');
-  if (!el) return;
-
-  const { count, error } = await supabaseClient
-    .from('pwa_installs')
-    .select('*', { count: 'exact', head: true });
-
-  if (error) {
-    console.error('[dashboard] install count failed:', error);
-    el.textContent = '—';
-    return;
-  }
-
-  el.textContent = count ?? 0;
 }
