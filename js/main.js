@@ -79,6 +79,12 @@ import {
   systemLogView as dashSystemLogView,
 } from "./dashboard/views/system-log.js";
 import {
+  installsView as dashInstallsView,
+} from "./dashboard/views/installs.js";
+import {
+  supportersView as dashSupportersView,
+} from "./dashboard/views/supporters.js";
+import {
   playersView as dashPlayersView,
 } from "./dashboard/views/players.js";
 import {
@@ -287,6 +293,14 @@ async function boot() {
     .add(
       `${DASH_BASE_PATH}/system-log`,
       dashSystemLogView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/installs`,
+      dashInstallsView,
+    )
+    .add(
+      `${DASH_BASE_PATH}/supporters`,
+      dashSupportersView,
     )
     .add(
       `${DASH_BASE_PATH}/players`,

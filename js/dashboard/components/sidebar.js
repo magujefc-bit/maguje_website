@@ -23,6 +23,8 @@ const ICONS = {
   hamburger: `<svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M3 5.5h14M3 10h14M3 14.5h14"/></svg>`,
   close: `<svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M5 5l10 10M15 5 5 15"/></svg>`,
   backHome: `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M12.5 4 6 10l6.5 6"/></svg>`,
+  installs: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M10 3v9"/><path d="M6.5 8.5 10 12l3.5-3.5"/><path d="M3.5 14.5v1.3a1.2 1.2 0 0 0 1.2 1.2h10.6a1.2 1.2 0 0 0 1.2-1.2v-1.3"/></svg>`,
+  supporters: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><circle cx="7" cy="6.5" r="2.3"/><path d="M2.5 15c0-2.6 2-4.3 4.5-4.3s4.5 1.7 4.5 4.3"/><circle cx="14.5" cy="7" r="1.8"/><path d="M12.8 10.8c1.8.2 3.2 1.6 3.2 4.2"/></svg>`,
 };
 
 // Same per-role nav sections as the original app-shell.js — unchanged.
@@ -42,6 +44,13 @@ const NAV_SECTIONS = {
         { href: dashPath('/report-issue'), icon: ICONS.bugIssueRecords, label: 'Bug Reports', ownerOnly: true },
       ],
     },
+    {
+      title: 'Analytics',
+      links: [
+        { href: dashPath('/installs'), icon: ICONS.installs, label: 'App Installs' },
+        { href: dashPath('/supporters'), icon: ICONS.supporters, label: 'Supporters' },
+      ],
+    },
   ],
   senior_manager: [
     {
@@ -52,6 +61,12 @@ const NAV_SECTIONS = {
         { href: dashPath('/officials'), icon: ICONS.official, label: 'Officials' },
         { href: dashPath('/club-profile'), icon: ICONS.clubStadium, label: 'Club Profile & Contacts' },
         { href: dashPath('/club-records'), icon: ICONS.clubRecord, label: 'Club Records' },
+      ],
+    },
+    {
+      title: 'Analytics',
+      links: [
+        { href: dashPath('/supporters'), icon: ICONS.supporters, label: 'Supporters' },
       ],
     },
   ],
