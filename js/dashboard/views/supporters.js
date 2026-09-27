@@ -96,7 +96,7 @@ export async function supportersView() {
     }
 
     const timestamps = (rows || []).map((r) => r.created_at).filter(Boolean);
-    renderPeriodChart(document.getElementById('chartSlot'), timestamps);
+    renderPeriodChart(document.getElementById('chartSlot'), timestamps, countError ? null : (count ?? 0), { entityLabel: 'supporters' });
   }
 
   async function loadPage() {

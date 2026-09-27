@@ -228,7 +228,9 @@ export const sidebar = {
       ${SIDEBAR_STYLES}
 
       <div id="dashMobileTopbar">
-        <img src="assets/maguje_logo.png" alt="Club Crest" class="dash-topbar-crest" onerror="this.style.display='none'">
+        <a href="/" aria-label="Maguje FC home">
+          <img src="/assets/maguje_logo.png" alt="Club Crest" class="dash-topbar-crest" onerror="this.style.display='none'">
+        </a>
         <span class="dash-topbar-title">Dashboard</span>
         <button type="button" id="dashMenuToggle" aria-label="Open menu" aria-expanded="false">
           ${ICONS.hamburger}
@@ -239,7 +241,9 @@ export const sidebar = {
 
       <aside id="sidebar">
         <div class="sidebar-header">
-          <img src="assets/maguje_logo.png" alt="Club Crest" class="club-crest" onerror="this.style.display='none'">
+          <a href="/" aria-label="Maguje FC home">
+            <img src="/assets/maguje_logo.png" alt="Club Crest" class="club-crest" onerror="this.style.display='none'">
+          </a>
           <div class="sidebar-header-text">
             <h2 id="clubName">Maguje Fc</h2>
             <span class="role-badge" id="roleBadge">${role.replace('_', ' ')}</span>

@@ -73,7 +73,7 @@ export async function installsView() {
       .map((r) => r.installed_at)
       .filter(Boolean);
 
-    renderPeriodChart(document.getElementById('chartSlot'), timestamps);
+    renderPeriodChart(document.getElementById('chartSlot'), timestamps, countError ? null : (count ?? 0), { entityLabel: 'installs' });
   }
 
   async function loadPage() {
